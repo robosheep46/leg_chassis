@@ -47,7 +47,7 @@ static void LKMotorDecode(CANInstance *_instance)
     uint8_t *rx_buff = _instance->rx_buff;
 
     DaemonReload(motor->daemon); // 喂狗
-    measure->feed_dt = DWT_GetDeltaT(&measure->feed_dwt_cnt);
+    measure->feed_dt = dwt_get_delta_time(&measure->feed_dwt_cnt);
 
     measure->last_ecd = measure->ecd;
     measure->ecd = (uint16_t)((rx_buff[7] << 8) | rx_buff[6]);
@@ -87,10 +87,10 @@ LKMotorInstance *LKMotorInit(Motor_Init_Config_s *config)
     config->can_init_config.can_module_callback = LKMotorDecode;
     config->can_init_config.rx_id = config->can_init_config.tx_id+0x140;
     config->can_init_config.tx_id = config->can_init_config.tx_id+0x140;
-    motor->motor_can_ins = CANRegister(&config->can_init_config);
+    motor->motor_can_ins = can_register(&config->can_init_config);
     MotorSenderGrouping(motor,config);
     LKMotorEnable(motor);
-    DWT_GetDeltaT(&motor->measure.feed_dwt_cnt);
+    dwt_get_delta_time(&motor->measure.feed_dwt_cnt);
     lkmotor_instance[idx++] = motor;
 
     Daemon_Init_Config_s daemon_config = {
@@ -132,7 +132,7 @@ void LKMotorControl()
 
     for(uint8_t i=0 ;i<2;i++)
     {
-        CANTransmit(&lk_sender_assignment[i], 1);
+        can_transmit(&lk_sender_assignment[i], 1);
     }
 }
 

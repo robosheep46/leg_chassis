@@ -116,7 +116,7 @@ RC_ctrl_t *RemoteControlInit(UART_HandleTypeDef *rc_usart_handle)
     conf.module_callback = RemoteControlRxCallback;
     conf.usart_handle = rc_usart_handle;
     conf.recv_buff_size = REMOTE_CONTROL_FRAME_SIZE;
-    rc_usart_instance = USARTRegister(&conf);
+    rc_usart_instance = usart_register(&conf);
 
     // 进行守护进程的注册,用于定时检查遥控器是否正常工作
     Daemon_Init_Config_s daemon_conf = {

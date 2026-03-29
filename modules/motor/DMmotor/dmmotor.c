@@ -79,7 +79,7 @@ static void DMMotorSetMode(DMMotor_Mode_e cmd, DMMotorInstance *motor)
 {
     memset(motor->motor_can_instace->tx_buff, 0xff, 7);  // 发送电机指令的时候前面7bytes都是0xff
     motor->motor_can_instace->tx_buff[7] = (uint8_t)cmd; // 最后一位是命令id
-    CANTransmit(motor->motor_can_instace, 1);
+    can_transmit(motor->motor_can_instace, 1);
 }
 
 static void DMMotorDecode(CANInstance *motor_can)
@@ -150,13 +150,13 @@ static void DMMotorLostCallback(void *motor_ptr)
     DMMotorInstance *motor = (DMMotorInstance *)motor_ptr;
     DMMotorEnable(motor);
     DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);
-    DWT_Delay(0.1);
+    dwt_delay(0.1);
 }
 
 void DMMotorCaliEncoder(DMMotorInstance *motor)
 {
     DMMotorSetMode(DM_CMD_ZERO_POSITION, motor);
-    DWT_Delay(0.1);
+    dwt_delay(0.1);
 }
 DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
 {
@@ -175,7 +175,7 @@ DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
     motor->motor_can_instace->rx_id = config->can_init_config.rx_id;
     config->can_init_config.can_module_callback = DMMotorDecode;
     config->can_init_config.id = motor;
-    motor->motor_can_instace = CANRegister(&config->can_init_config);
+    motor->motor_can_instace = can_register(&config->can_init_config);
     MotorSenderGrouping(motor,&config->can_init_config);
 
     Daemon_Init_Config_s conf = {
@@ -187,7 +187,7 @@ DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
 
     DMMotorEnable(motor);
     DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);    
-    DWT_Delay(0.1);
+    dwt_delay(0.1);
     // DMMotorCaliEncoder(motor);
 
     dm_motor_instance[idx++] = motor;
@@ -261,7 +261,7 @@ void DMMotorTask(void *argument)
             if(motor->set_run_mode_flag==0)
             {
                 DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);
-                DWT_Delay(0.1);
+                dwt_delay(0.1);
                 motor->set_run_mode_flag=1;
                 motor->set_stop_mode_flag=0;
             }
@@ -279,7 +279,7 @@ void DMMotorTask(void *argument)
             dm_sender_assignment[i].tx_buff[5] = (uint8_t)(motor_send_mailbox.Kd >> 4);
             dm_sender_assignment[i].tx_buff[6] = (uint8_t)(((motor_send_mailbox.Kd & 0xF) << 4) | (motor_send_mailbox.torque_des >> 8));
             dm_sender_assignment[i].tx_buff[7] = (uint8_t)(motor_send_mailbox.torque_des);
-            CANTransmit(&dm_sender_assignment[i], 1);
+            can_transmit(&dm_sender_assignment[i], 1);
         }
         osDelay(2);
     }

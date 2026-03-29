@@ -11,7 +11,7 @@
 #include "stdint.h"
 #include "cmsis_os.h"
 #include "queue.h"
-#include "bmi088.h"
+#include "ins_task.h"
 /* 开发板类型定义,烧录时注意不要弄错对应功能;修改定义后需要重新编译,只能存在一个定义! */
 #define CHASSIS_BOARD_CONTROL_CHASSIS // 只控底盘
 // #define CHASSIS_BOARD // 

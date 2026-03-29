@@ -3,11 +3,11 @@
 #include "buzzer.h"
 #include "daemon.h"
 #include "robot_def.h"
-#include "robot_cmd.h"
+
 #include "board2board.h"
 // module
 #include "remote_control.h"
-#include "bmi088.h"
+#include "ins_task.h"
 #include "minipc_comm.h"
 #include "referee_mc_task.h"
 #include "general_def.h"

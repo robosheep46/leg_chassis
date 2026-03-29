@@ -88,7 +88,7 @@ CANCommInstance *CANCommInit(CANComm_Init_Config_s *comm_config)
     // can instance的设置
     comm_config->can_config.id = ins; // CANComm的实例指针作为CANInstance的id,回调函数中会用到
     comm_config->can_config.can_module_callback = CANCommRxCallback;
-    ins->can_ins = CANRegister(&comm_config->can_config);
+    ins->can_ins = can_register(&comm_config->can_config);
 
     // Daemon_Init_Config_s daemon_config = {
     //     .callback = CANCommLostCallback,
@@ -114,7 +114,7 @@ void CANCommSend(CANCommInstance *instance, uint8_t *data)
         send_len = instance->send_buf_len - i >= 8 ? 8 : instance->send_buf_len - i;
         CANSetDLC(instance->can_ins, send_len);
         memcpy(instance->can_ins->tx_buff, instance->raw_sendbuf + i, send_len);
-        CANTransmit(instance->can_ins, 1);
+        can_transmit(instance->can_ins, 1);
     }
 }
 

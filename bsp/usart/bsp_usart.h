@@ -1,14 +1,25 @@
-#ifndef BSP_RC_H
-#define BSP_RC_H
+#ifndef BSP_USART_H
+#define BSP_USART_H
 
 #include <stdint.h>
 #include "main.h"
-#include "usart.h"
 
-#define DEVICE_USART_CNT 3     
-#define USART_RXBUFF_LIMIT 256 
+
+#include "cmsis_os.h"
+#include "event_groups.h"   
+#include "semphr.h"      
+
+#define DEVICE_USART_CNT 3     // C板至多分配3个串口
+#define USART_RXBUFF_LIMIT 256 // 如果协议需要更大的buff,请修改这里
+#define USART_BUFFER_COUNT 2 
+
+// 事件组位定义（用于中断与任务同步）
+#define USART_BUFFER0_FULL_BIT  (1 << 0)   // 缓冲区0已满待处理
+#define USART_BUFFER1_FULL_BIT  (1 << 1)   // 缓冲区1已满待处理
+#define USART_BUFFER_CONSUMED_BIT (1 << 2) // 消费完成
+
 // 模块回调函数,用于解析协议
-typedef void (*usart_module_callback)();
+typedef void (*usart_module_callback)(uint8_t *data, uint16_t len);
 
 /* 发送模式枚举 */
 typedef enum
@@ -20,10 +31,18 @@ typedef enum
 } USART_TRANSFER_MODE;
 
 // 串口实例结构体,每个module都要包含一个实例.
-// 由于串口是独占的点对点通信,所以不需要考虑多个module同时使用一个串口的情况,因此不用加入id;当然也可以选择加入,这样在bsp层可以访问到module的其他信息
 typedef struct
 {
-    uint8_t recv_buff[USART_RXBUFF_LIMIT]; // 预先定义的最大buff大小,如果太小请修改USART_RXBUFF_LIMIT
+    // 双缓冲相关
+    uint8_t *rx_buffers[USART_BUFFER_COUNT];   // 指向动态分配的缓冲区
+    volatile uint8_t active_buffer;            // 当前DMA使用的缓冲区索引
+    volatile uint8_t buffer_full[USART_BUFFER_COUNT]; // 缓冲区是否已满
+    uint16_t rx_len[USART_BUFFER_COUNT];       // 每个缓冲区实际接收的长度
+
+    // 同步对象
+    EventGroupHandle_t xEventGroup;            // 事件组
+    SemaphoreHandle_t xMutex;                  // 保护共享资源
+    
     uint8_t recv_buff_size;                // 模块接收一包数据的大小
     UART_HandleTypeDef *usart_handle;      // 实例对应的usart_handle
     usart_module_callback module_callback; // 解析收到的数据的回调函数
@@ -42,7 +61,7 @@ typedef struct
  *
  * @param init_config 传入串口初始化结构体
  */
-USARTInstance *USARTRegister(USART_Init_Config_s *init_config);
+USARTInstance *usart_register(USART_Init_Config_s *init_config);
 
 /**
  * @brief 启动串口服务,需要传入一个usart实例.一般用于lost callback的情况(使用串口的模块daemon)
@@ -71,5 +90,5 @@ void USARTSend(USARTInstance *_instance, uint8_t *send_buf, uint16_t send_size,U
  * @return uint8_t ready 1, busy 0
  */
 uint8_t USARTIsReady(USARTInstance *_instance);
-
+extern USARTInstance *usart_instance[DEVICE_USART_CNT];
 #endif

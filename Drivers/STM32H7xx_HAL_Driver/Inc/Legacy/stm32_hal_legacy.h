@@ -1877,7 +1877,7 @@ extern "C" {
 #define HAL_PWREx_DeactivateOverDrive                 HAL_PWREx_DisableOverDrive
 #define HAL_PWREx_DisableSDADCAnalog                  HAL_PWREx_DisableSDADC
 #define HAL_PWREx_EnableSDADCAnalog                   HAL_PWREx_EnableSDADC
-#define HAL_PWREx_PVMConfig                           HAL_PWREx_ConfigPVM
+#define HAL_PWREx_Pcalculate_leg_torgueonfig                           HAL_PWREx_ConfigPVM
 
 #define PWR_MODE_NORMAL                               PWR_PVD_MODE_NORMAL
 #define PWR_MODE_IT_RISING                            PWR_PVD_MODE_IT_RISING

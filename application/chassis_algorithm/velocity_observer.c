@@ -1,4 +1,4 @@
-#include "bmi088.h"
+#include "ins_task.h"
 #include "robot_def.h"
 #include "user_lib.h"
 #include "general_def.h"
@@ -21,7 +21,7 @@ void GetChassisAccel()
  * @param imu imu数据
  * @param delta_t 更新间隔
  */
-void SpeedObserver(LegParam *lp, LegParam *rp, ChassisParam *cp, imu_data_t *imu, float delta_t)
+void SpeedObserver(LegParam *lp, LegParam *rp, ChassisParam *cp, attitude_t *imu, float delta_t)
 {
     // 修正轮速和距离
     lp->wheel_w = lp->w_ecd *WHEEL_RADIUS *2*PI/60; // 减去和定子固连的phi2_w

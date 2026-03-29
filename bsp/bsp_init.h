@@ -14,7 +14,7 @@
 // 
 void BSPInit()
 {
-    DWT_Init(640);
+    dwt_init(640);
     // BSPLogInit();
     // BuzzerInit();
 }

@@ -1,13 +1,3 @@
-/**
- ******************************************************************************
- * @file	bsp_dwt.c
- * @author  Wang Hongxi
- * @author modified by Neo with annotation
- * @version V1.1.0
- * @date    2022/3/8
- * @brief
- */
-
 #include "bsp_dwt.h"
 #include "cmsis_os.h"
 
@@ -25,7 +15,7 @@ static uint64_t CYCCNT64;
  *       不过,使用dwt的初衷是定时不被中断/任务等因素影响,因此该实现仍然有其存在的意义
  *
  */
-static void DWT_CNT_Update(void)
+static void dwt_cnt_update(void)
 {
     static volatile uint8_t bit_locker = 0;
     if (!bit_locker)
@@ -40,7 +30,7 @@ static void DWT_CNT_Update(void)
     }
 }
 
-void DWT_Init(uint32_t CPU_Freq_mHz)
+void dwt_init(uint32_t CPU_Freq_mHz)
 {
     /* 使能DWT外设 */
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
@@ -56,37 +46,37 @@ void DWT_Init(uint32_t CPU_Freq_mHz)
     CPU_FREQ_Hz_us = CPU_FREQ_Hz / 1000000;
     CYCCNT_RountCount = 0;
 
-    DWT_CNT_Update();
+    dwt_cnt_update();
 }
 
-float DWT_GetDeltaT(uint32_t *cnt_last)
+float dwt_get_delta_time(uint32_t *cnt_last)
 {
     volatile uint32_t cnt_now = DWT->CYCCNT;
     float dt = ((uint32_t)(cnt_now - *cnt_last)) / ((float)(CPU_FREQ_Hz));
     *cnt_last = cnt_now;
 
-    DWT_CNT_Update();
+    dwt_cnt_update();
 
     return dt;
 }
 
-double DWT_GetDeltaT64(uint32_t *cnt_last)
+double dwt_get_delta_time64(uint32_t *cnt_last)
 {
     volatile uint32_t cnt_now = DWT->CYCCNT;
     double dt = ((uint32_t)(cnt_now - *cnt_last)) / ((double)(CPU_FREQ_Hz));
     *cnt_last = cnt_now;
 
-    DWT_CNT_Update();
+    dwt_cnt_update();
 
     return dt;
 }
 
-void DWT_SysTimeUpdate(void)
+void dwt_update_systime(void)
 {
     volatile uint32_t cnt_now = DWT->CYCCNT;
     static uint64_t CNT_TEMP1, CNT_TEMP2, CNT_TEMP3;
 
-    DWT_CNT_Update();
+    dwt_cnt_update();
 
     CYCCNT64 = (uint64_t)CYCCNT_RountCount * (uint64_t)UINT32_MAX + (uint64_t)cnt_now;
     CNT_TEMP1 = CYCCNT64 / CPU_FREQ_Hz;
@@ -97,34 +87,34 @@ void DWT_SysTimeUpdate(void)
     SysTime.us = CNT_TEMP3 / CPU_FREQ_Hz_us;
 }
 
-float DWT_GetTimeline_s(void)
+float dwt_get_time_s(void)
 {
-    DWT_SysTimeUpdate();
+    dwt_update_systime();
 
     float DWT_Timelinef32 = SysTime.s + SysTime.ms * 0.001f + SysTime.us * 0.000001f;
 
     return DWT_Timelinef32;
 }
 
-float DWT_GetTimeline_ms(void)
+float dwt_get_time_ms(void)
 {
-    DWT_SysTimeUpdate();
+    dwt_update_systime();
 
     float DWT_Timelinef32 = SysTime.s * 1000 + SysTime.ms + SysTime.us * 0.001f;
 
     return DWT_Timelinef32;
 }
 
-uint64_t DWT_GetTimeline_us(void)
+uint64_t dwt_get_time_us(void)
 {
-    DWT_SysTimeUpdate();
+    dwt_update_systime();
 
     uint64_t DWT_Timelinef32 = SysTime.s * 1000000 + SysTime.ms * 1000 + SysTime.us;
 
     return DWT_Timelinef32;
 }
 
-void DWT_Delay(float Delay)
+void dwt_delay(float Delay)
 {
     uint32_t tickstart = DWT->CYCCNT;
     float wait = Delay;

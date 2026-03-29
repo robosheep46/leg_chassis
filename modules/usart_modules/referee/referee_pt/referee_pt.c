@@ -123,10 +123,10 @@ static void rfcDecode(const uint8_t *sbus_buf)
     memcpy(&rf_ctrl[LAST], &rf_ctrl[TEMP], sizeof(referee_ctrl_t));
 }
 
-static void RefereeControlRxCallback()
+static void RefereeControlRxCallback(uint8_t *data, uint16_t len)
 {
     DaemonReload(rfc_daemon_instance);         // 先喂狗
-    rfcDecode(rfc_usart_instance->recv_buff); // 进行协议解析
+    rfcDecode(data); // 进行协议解析
 }
 
 // 遥控器离线回调
@@ -143,7 +143,7 @@ referee_ctrl_t *RefereeControlInit(UART_HandleTypeDef *rf_usart_handle)
     conf.usart_handle = rf_usart_handle;
     conf.recv_buff_size = CUSTOM_CONTROLLER_FRAME_SIZE;
     conf.module_callback =RefereeControlRxCallback;
-    rfc_usart_instance = USARTRegister(&conf);
+    rfc_usart_instance = usart_register(&conf);
     
     Daemon_Init_Config_s daemon_conf = {
         .owner_id = rfc_usart_instance,

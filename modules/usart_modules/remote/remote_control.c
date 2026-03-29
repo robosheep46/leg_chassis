@@ -52,10 +52,10 @@ static void sbus_to_rc(const uint8_t *sbus_buf)
  * @brief 对sbus_to_rc的简单封装,用于注册到bsp_usart的回调函数中
  *
  */
-static void RemoteControlRxCallback()
+static void RemoteControlRxCallback(uint8_t *data, uint16_t len)
 {
     DaemonReload(rc_daemon_instance);         // 先喂狗
-    sbus_to_rc(rc_usart_instance->recv_buff); // 进行协议解析
+    sbus_to_rc(data); // 进行协议解析
 }
 
 /**
@@ -65,7 +65,6 @@ static void RemoteControlRxCallback()
 static void RCLostCallback(void *id)
 {
     memset(rc_ctrl, 0, sizeof(rc_ctrl)); // 清空遥控器数据
-    USARTServiceInit(rc_usart_instance); // 尝试重新启动接收
 }
 
 RC_ctrl_t *RemoteControlInit(UART_HandleTypeDef *rc_usart_handle)
@@ -74,7 +73,7 @@ RC_ctrl_t *RemoteControlInit(UART_HandleTypeDef *rc_usart_handle)
     conf.module_callback = RemoteControlRxCallback;
     conf.usart_handle = rc_usart_handle;
     conf.recv_buff_size = REMOTE_CONTROL_FRAME_SIZE;
-    rc_usart_instance = USARTRegister(&conf);
+    rc_usart_instance = usart_register(&conf);
 
     // 进行守护进程的注册,用于定时检查遥控器是否正常工作
     Daemon_Init_Config_s daemon_conf = {

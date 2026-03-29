@@ -10,7 +10,7 @@ DWT是stm32内部的一个"隐藏资源",他的用途是给下载器提供准确
 static uint32_t cnt;
 float deltaT;
 
-deltaT=DWT_GetDeltaT(&cnt);
+deltaT=dwt_get_delta_time(&cnt);
 ```
 
 ### 计算执行某部分代码的耗时
@@ -28,9 +28,9 @@ end = DWT_DetTimeline_ms()-start;
 #define TIME_ELAPSE(dt, code)                    \
     do                                           \
     {                                            \
-        float tstart = DWT_GetTimeline_s();      \
+        float tstart = dwt_get_time_s();      \
         code;                                    \
-        dt = DWT_GetTimeline_s() - tstart;       \
+        dt = dwt_get_time_s() - tstart;       \
         // LOGINFO("[DWT] " #dt " = %f s\r\n", dt); 
     } while (0)
 

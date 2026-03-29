@@ -3,8 +3,8 @@
 
 #include "chassis.h"
 #include "kalman_filter.h"
-#include "bmi088.h"
+#include "ins_task.h"
 
-void SpeedObserver(LegParam *lp, LegParam *rp, ChassisParam *cp, imu_data_t *imu, float delta_t);
+void SpeedObserver(LegParam *lp, LegParam *rp, ChassisParam *cp, attitude_t *imu, float delta_t);
 
 #endif
