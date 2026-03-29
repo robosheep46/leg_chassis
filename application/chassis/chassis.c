@@ -375,7 +375,7 @@ void ChassisTask(void *argument)
         calculate_leg_theta_w(&r_side,&chassis);
 
         // 4. 通过卡尔曼滤波估计机体速度
-        SpeedObserver(&l_side, &r_side, &chassis, &chassis_imu_data, del_t);
+        observe_speed(&l_side, &r_side, &chassis, &chassis_imu_data, del_t);
         
         // 5. lqr 算 T_Hip
         set_left_leg_six_states(&l_side, &chassis)  ;

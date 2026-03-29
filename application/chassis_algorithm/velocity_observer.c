@@ -21,7 +21,7 @@ void GetChassisAccel()
  * @param imu imu数据
  * @param delta_t 更新间隔
  */
-void SpeedObserver(LegParam *lp, LegParam *rp, ChassisParam *cp, attitude_t *imu, float delta_t)
+void observe_speed(LegParam *lp, LegParam *rp, ChassisParam *cp, attitude_t *imu, float delta_t)
 {
     // 修正轮速和距离
     lp->wheel_w = lp->w_ecd *WHEEL_RADIUS *2*PI/60; // 减去和定子固连的phi2_w
