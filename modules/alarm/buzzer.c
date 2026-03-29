@@ -70,7 +70,7 @@ BuzzerInstance *BuzzerRegister(QueueHandle_t queue)
     BuzzerInstance *instance = (BuzzerInstance *)malloc(sizeof(BuzzerInstance));
     memset(instance, 0, sizeof(BuzzerInstance));
     
-    instance->buzzer_pwm = PWMRegister(&buzzer_config.buzzer_pwm_init_config);
+    instance->buzzer_pwm = pwm_register(&buzzer_config.buzzer_pwm_init_config);
     
     instance->frequency = buzzer_config.frequency;
     instance->work_mode = buzzer_config.work_mode;
@@ -138,7 +138,7 @@ void BuzzerSetMode(BuzzerInstance *_instance, Buzzer_Work_Mode_e mode)
             break;
         case BUZZER_OFF:
         default:
-            PWMStop(_instance->buzzer_pwm);
+            pwm_stop(_instance->buzzer_pwm);
             _instance->song.song = NULL;
             _instance->song.note_count = 0;
             break;
@@ -151,18 +151,18 @@ static void BuzzerSetFrequency(BuzzerInstance * _instance, uint32_t freq)
     
     if (freq == 0) 
     {
-        PWMStop(_instance->buzzer_pwm);
+        pwm_stop(_instance->buzzer_pwm);
         return;
     }
     
-    PWMStart(_instance->buzzer_pwm);
+    pwm_start(_instance->buzzer_pwm);
     
     // 计算周期：周期 = 1 / 频率
     float period = 1.0f / freq;
-    PWMSetPeriod(_instance->buzzer_pwm, period);
+    pwm_set_period(_instance->buzzer_pwm, period);
     
     // 重新设置占空比
-    PWMSetDutyRatio(_instance->buzzer_pwm, _instance->loudness);
+    pwm_set_duty_ratio(_instance->buzzer_pwm, _instance->loudness);
 }
 
 void BuzzerSetLoudness(BuzzerInstance * _instance, float loudness)
@@ -204,7 +204,7 @@ static void SongNextNote(BuzzerInstance *_instance)
             // 播放一次：停止播放并关闭蜂鸣器
             _instance->work_mode = BUZZER_OFF;
             _instance->song.init_flag = 0;
-            PWMStop(_instance->buzzer_pwm);
+            pwm_stop(_instance->buzzer_pwm);
             _instance->song.finished=1;
         }
     }

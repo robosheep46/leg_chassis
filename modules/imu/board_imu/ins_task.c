@@ -13,6 +13,7 @@
  */
 #include "ins_task.h"
 #include "bsp_dwt.h"
+#include "cmsis_os2.h"
 #include "controller.h"
 #include "QuaternionEKF.h"
 #include "spi.h"
@@ -20,6 +21,15 @@
 #include "user_lib.h"
 #include "general_def.h"
 #include <stdlib.h>
+
+static TaskHandle_t imu_task_handle;
+
+const osThreadAttr_t imu_task_attributes = {
+    .name = "imu_task",
+    .stack_size = 1024*2,
+    .priority = (osPriority_t) osPriorityAboveNormal,
+};
+
 
 static INS_t INS;
 static IMU_Param_t IMU_Param;
@@ -88,6 +98,8 @@ attitude_t *imu_init(void)
     else
         return attitude_instance;
 
+    imu_task_handle = osThreadNew(INS_Task, NULL, &imu_task_attributes);
+
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
 
     while (BMI088Init(&hspi2, 1) != BMI088_NO_ERROR)
@@ -120,73 +132,77 @@ attitude_t *imu_init(void)
 }
 
 /* 注意以1kHz的频率运行此任务 */
-void INS_Task(void)
-{
-    //用于控制不同子任务的执行频率（如传感器更新、温度控制）
-    static uint32_t count = 0;
-    const float gravity[3] = {0, 0, 9.81f};
-
-    dt = dwt_get_delta_time(&INS_DWT_Count);
-    t += dt;
-
-    // ins update
-    if ((count % 1) == 0)
+void INS_Task(void *argument)
+{   
+    for(;;)
     {
-        BMI088_Read(&BMI088);
+        //用于控制不同子任务的执行频率（如传感器更新、温度控制）
+        static uint32_t count = 0;
+        const float gravity[3] = {0, 0, 9.81f};
 
-        INS.Accel[X] = BMI088.Accel[X];
-        INS.Accel[Y] = BMI088.Accel[Y];
-        INS.Accel[Z] = BMI088.Accel[Z];
-        INS.Gyro[X] = BMI088.Gyro[X];
-        INS.Gyro[Y] = BMI088.Gyro[Y];
-        INS.Gyro[Z] = BMI088.Gyro[Z];
+        dt = dwt_get_delta_time(&INS_DWT_Count);
+        t += dt;
 
-        // 根据板子拜访情况进行调整
-        IMU_Param_Correction(&IMU_Param, INS.Gyro, INS.Accel);
-
-        // 核心函数,EKF更新四元数
-        //一个基于四元数的扩展卡尔曼滤波器（EKF），用于融合陀螺仪和加速度计数据，实时估计物体的三维姿态（欧拉角）并补偿陀螺仪的零偏。
-        IMU_QuaternionEKF_Update(INS.Gyro[X], INS.Gyro[Y], INS.Gyro[Z], INS.Accel[X], INS.Accel[Y], INS.Accel[Z], dt);
-        
-        //将更新后的四元数和零漂值赋值给INS
-        memcpy(INS.q, QEKF_INS.q, sizeof(QEKF_INS.q));
-
-        //机体系基向量转换到导航坐标系,本例选取惯性系为导航系
-        BodyFrameToEarthFrame(xb, INS.xn, INS.q);
-        BodyFrameToEarthFrame(yb, INS.yn, INS.q);
-        BodyFrameToEarthFrame(zb, INS.zn, INS.q);
-
-        //将重力从导航坐标系n转换到机体系b,随后根据加速度计数据计算运动加速度
-        //消除重力分量影响加速度的计算
-        float gravity_b[3];
-        EarthFrameToBodyFrame(gravity, gravity_b, INS.q);
-        // 计算机体坐标系下的加速度,即去除重力影响后的加速度
-        for (uint8_t i = 0; i < 3; ++i) // 同样过一个低通滤波
+        // ins update
+        if ((count % 1) == 0)
         {
-            INS.MotionAccel_b[i] = (INS.Accel[i] - gravity_b[i]) * dt / (INS.AccelLPF + dt) + INS.MotionAccel_b[i] * INS.AccelLPF / (INS.AccelLPF + dt);
+            BMI088_Read(&BMI088);
+
+            INS.Accel[X] = BMI088.Accel[X];
+            INS.Accel[Y] = BMI088.Accel[Y];
+            INS.Accel[Z] = BMI088.Accel[Z];
+            INS.Gyro[X] = BMI088.Gyro[X];
+            INS.Gyro[Y] = BMI088.Gyro[Y];
+            INS.Gyro[Z] = BMI088.Gyro[Z];
+
+            // 根据板子拜访情况进行调整
+            IMU_Param_Correction(&IMU_Param, INS.Gyro, INS.Accel);
+
+            // 核心函数,EKF更新四元数
+            //一个基于四元数的扩展卡尔曼滤波器（EKF），用于融合陀螺仪和加速度计数据，实时估计物体的三维姿态（欧拉角）并补偿陀螺仪的零偏。
+            IMU_QuaternionEKF_Update(INS.Gyro[X], INS.Gyro[Y], INS.Gyro[Z], INS.Accel[X], INS.Accel[Y], INS.Accel[Z], dt);
+            
+            //将更新后的四元数和零漂值赋值给INS
+            memcpy(INS.q, QEKF_INS.q, sizeof(QEKF_INS.q));
+
+            //机体系基向量转换到导航坐标系,本例选取惯性系为导航系
+            BodyFrameToEarthFrame(xb, INS.xn, INS.q);
+            BodyFrameToEarthFrame(yb, INS.yn, INS.q);
+            BodyFrameToEarthFrame(zb, INS.zn, INS.q);
+
+            //将重力从导航坐标系n转换到机体系b,随后根据加速度计数据计算运动加速度
+            //消除重力分量影响加速度的计算
+            float gravity_b[3];
+            EarthFrameToBodyFrame(gravity, gravity_b, INS.q);
+            // 计算机体坐标系下的加速度,即去除重力影响后的加速度
+            for (uint8_t i = 0; i < 3; ++i) // 同样过一个低通滤波
+            {
+                INS.MotionAccel_b[i] = (INS.Accel[i] - gravity_b[i]) * dt / (INS.AccelLPF + dt) + INS.MotionAccel_b[i] * INS.AccelLPF / (INS.AccelLPF + dt);
+            }
+            //将机体坐标系下的加速度转换到导航坐标系n
+            BodyFrameToEarthFrame(INS.MotionAccel_b, INS.MotionAccel_n, INS.q); // 转换回导航系n
+
+            INS.Yaw = QEKF_INS.Yaw;
+            INS.Pitch = QEKF_INS.Pitch;
+            INS.Roll = QEKF_INS.Roll;
+            INS.YawTotalAngle = QEKF_INS.YawTotalAngle;
+
+            imu_data->yaw = INS.Yaw;
+            imu_data->pitch = INS.Pitch;
+            imu_data->roll = INS.Roll;
+            imu_data->yaw_total_angle = INS.YawTotalAngle;
+            memcpy(imu_data->gyro, INS.Gyro, sizeof(INS.Gyro));
+            memcpy(imu_data->accel, INS.Accel, sizeof(INS.Accel));
         }
-        //将机体坐标系下的加速度转换到导航坐标系n
-        BodyFrameToEarthFrame(INS.MotionAccel_b, INS.MotionAccel_n, INS.q); // 转换回导航系n
-
-        INS.Yaw = QEKF_INS.Yaw;
-        INS.Pitch = QEKF_INS.Pitch;
-        INS.Roll = QEKF_INS.Roll;
-        INS.YawTotalAngle = QEKF_INS.YawTotalAngle;
-
-        imu_data->yaw = INS.Yaw;
-        imu_data->pitch = INS.Pitch;
-        imu_data->roll = INS.Roll;
-        imu_data->yaw_total_angle = INS.YawTotalAngle;
-        memcpy(imu_data->gyro, INS.Gyro, sizeof(INS.Gyro));
-        memcpy(imu_data->accel, INS.Accel, sizeof(INS.Accel));
+        osDelay(1);
+        // // temperature control
+        // if ((count % 2) == 0)
+        // {
+        //     // 500hz
+        //     IMU_Temperature_Ctrl();
+        // }
     }
-
-    // // temperature control
-    // if ((count % 2) == 0)
-    // {
-    //     // 500hz
-    //     IMU_Temperature_Ctrl();
-    // }
+    
 }
 
 /**
@@ -357,3 +373,4 @@ void EularAngleToQuaternion(float Yaw, float Pitch, float Roll, float *q)
     q[2] = sinPitch * cosRoll * sinYaw + cosPitch * sinRoll * cosYaw;
     q[3] = cosPitch * cosRoll * sinYaw - sinPitch * sinRoll * cosYaw;
 }
+

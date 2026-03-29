@@ -60,10 +60,10 @@ void ChassisCMDInit(RobotCtrlQueues_t *control_queue)
 
     // CreateUsartTask();
 
-    // static QueueHandle_t buzzer_queue = NULL;
-    // buzzer_queue = xQueueCreate(10, sizeof(Buzzer_Event_t));
-    // buzzer = BuzzerRegister(buzzer_queue);
-    // CreateDaemon(buzzer);
+    static QueueHandle_t buzzer_queue = NULL;
+    buzzer_queue = xQueueCreate(10, sizeof(Buzzer_Event_t));
+    buzzer = BuzzerRegister(buzzer_queue);
+    CreateDaemon(buzzer);
 
     chassis_cmd_send.l_target_len = 0.18;
     chassis_cmd_send.r_target_len = 0.18;

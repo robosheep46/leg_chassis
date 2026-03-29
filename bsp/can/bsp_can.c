@@ -5,6 +5,7 @@
 #include "bsp_dwt.h"
 // #include "bsp_log.h"
 #include "stdint.h"
+#include <stdint.h>
 
 /* can instance ptrs storage, used for recv callback */
 // 在CAN产生接收中断会遍历数组,选出hfdcan和rxid与发生中断的实例相同的那个,调用其回调函数
@@ -221,3 +222,15 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
     can_callback(hfdcan, FDCAN_RX_FIFO1); // 调用我们自己写的函数来处理消息
 }
 
+// void can_check_timeout(uint32_t timeout_ms)
+// {
+//     uint32_t current_time = dwt_get_time_ms();
+//     for (size_t i = 0; i < idx; i++)
+//     {
+//         if ((current_time - last_time) > 2000)
+//         {
+//             // 清零接收缓冲区
+//             memset(can_instance[i]->rx_buff, 0, sizeof(can_instance[i]->rx_buff));            
+//         }
+//     }
+// }

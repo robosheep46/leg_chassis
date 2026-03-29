@@ -25,8 +25,11 @@ typedef struct _
     // 接收的回调函数,用于解析接收到的数据
     void (*can_module_callback)(struct _ *); // callback needs an instance to tell among registered ones
     void *id;                                // 使用can外设的模块指针(即id指向的模块拥有此can实例,是父子关系)
-
 }CANInstance;
+
+
+
+
 #pragma pack()
 
 /* CAN实例初始化结构体,将此结构体指针传入注册函数 */

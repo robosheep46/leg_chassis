@@ -88,7 +88,7 @@ attitude_t *imu_init(void);
  *        p.s. osDelay(1);
  *
  */
-void INS_Task(void);
+ void INS_Task(void *argument);
 
 /**
  * @brief 四元数更新函数,即实现dq/dt=0.5Ωq
