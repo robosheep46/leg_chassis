@@ -1,0 +1,155 @@
+#ifndef CHASSIS_H
+#define CHASSIS_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include "kalman_filter.h"
+#include "robot_def.h"
+// 电机枚举
+#define JOINT_CNT 4u
+#define LF 0u
+#define LB 1u
+#define RF 2u
+#define RB 3u
+
+#define DRIVEN_CNT 2u
+#define LD 0u
+#define RD 1u
+
+#define CENTER_IMU_W 0.0f
+#define CENTER_IMU_L 0.0f
+#define CENTER_IMU_H 0.0f
+// 物理参数
+#define CALF_LEN 0.26f              // 小腿长度 (m)
+#define THIGH_LEN 0.2f             // 大腿长度 (m) 
+#define WHEEL_RADIUS 0.0775f         // 轮子半径 (m)
+#define WHEEL_MASS 2.0f            // 驱动轮质量 (kg)
+#define BODY_MASS 16.0f              // 机体质量 (kg)
+#define GRAVITY 9.8f                // 重力加速度 (m/s²)
+
+// 滤波器参数
+#define VEL_PROCESS_NOISE 25.0f     // 速度过程噪声
+#define VEL_MEASURE_NOISE 800.0f   // 速度测量噪声
+#define ACC_PROCESS_NOISE 2000.0f   // 加速度过程噪声
+#define ACC_MEASURE_NOISE 0.01f     // 加速度测量噪声
+
+// 控制参数
+#define MAX_WHEEL_TORQUE 5.0f       // 最大轮力矩 (N·m)
+#define MAX_JOINT_TORQUE 8.0f       // 最大关节力矩 (N·m)
+
+// 数学常量
+#define M_PI 3.14159265358979323846f
+#define M_PI_2 1.57079632679489661923f
+
+// 平衡底盘模式
+typedef enum {
+    BALANCE_OFF = 0,        // 关闭
+    BALANCE_SAFE,           // 安全模式
+    BALANCE_STAND_UP,       // 起立模式  
+    BALANCE_CALIBRATE,      // 校准模式
+    BALANCE_NORMAL,         // 正常平衡模式
+    BALANCE_DEBUG           // 调试模式
+} BalanceMode_e;
+
+// 五连杆腿部参数
+typedef struct {
+    //五（四）连杆
+    //  各个点坐标
+    float YD, YB, XD, XB, XC, YC;
+    // BD长度的平方
+    float lBD_2;
+    // 计算phi2用的中间量
+    float A0, B0, C0 ;
+    float phi1, phi2, phi3, phi4, phi0;
+    float phi1_angle, phi2_angle, phi3_angle, phi4_angle;
+
+    float phi1_w, phi2_w, phi3_w, phi4_w, phi0_w;
+
+    // 腿参数
+    float theta_pred;
+    float theta, theta_w; // 杆和垂直方向的夹角,为控制状态之一
+    float leg_len, legd;
+    float height, height_v;
+    float F_leg, T_hip;
+    float T_real_hip;
+
+    float target_len;
+
+    // 雅可比矩阵
+    // float jacobian[2][2];
+    
+    // 力和力矩
+    float T_wheel, T[2];
+    float real_T_wheel;
+    // 运动学参数
+    float wheel_w, wheel_dist, body_v, zw_ddot, support_force;
+    uint8_t fly_flag;
+    float jacobian[2][2];
+
+    float T_back, T_front;
+    float real_T_back, real_T_front;
+    float w_ecd;
+    float pitch ,pitch_w;
+} LegParam;
+
+// 腿部状态向量（LQR控制用）
+typedef struct {
+    float theta, theta_dot;     // 腿部角度和角速度
+    float x, x_dot;             // 机体位移和速度  
+    float phi, phi_dot;         // 机体俯仰角和角速度
+} LegState_t;
+
+
+
+// 离地检测器
+typedef struct {
+    uint32_t takeoff_time, touch_time;
+    uint8_t is_takeoff;
+    float support_force;
+} TakeoffDetector;
+
+// 主底盘参数结构体
+typedef struct {
+    // 电机反馈
+    float f_motor_vel, b_motor_vel;
+    
+    // 腿端运动学
+    float dL0_dPhi0[2];
+    
+    // 控制目标
+    float target_leg_len, target_dL0, target_theta, target_theta_w;
+    float target_phi0, target_dPhi0, target_dist;
+    float target_pitch, target_pitch_w, target_yaw;
+    
+    // 当前状态
+    float dist, pitch, pitch_w, yaw,yaw_w, wz,roll,roll_w;
+    
+    // 速度
+    float vel, target_v;        // 底盘速度
+    float vel_m;                // 底盘速度测量值
+    float vel_predict;          // 底盘速度预测值
+    float vel_cov;              // 速度方差
+    float acc_m, acc_last;      // 水平方向加速度,用于计算速度预测值
+
+        
+    // 物理参数
+    float body_mass, wheel_mass;
+    
+    LegState_t leg_state[2];
+    
+    // 系统状态
+    uint32_t last_time, duration;
+    uint8_t error_code;
+    BalanceMode_e balance_mode;
+    uint8_t predicted_flag;
+
+    KalmanFilter_t v_kf;  // 观测车体速度
+} ChassisParam;
+
+
+// 核心函数
+void ChassisInit(ChassisQueues_t *chassis_queue);
+void ChassisTask(void *argument);
+
+
+#endif // CHASSIS_H

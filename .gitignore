@@ -1,0 +1,24 @@
+# Build directories
+build/
+cmake-build*/
+
+# Cache directories
+.cache/
+CMakeFiles/
+CMakeCache.txt
+
+# IDE files
+.vscode/
+.idea/
+Engineer.code-workspace
+# Compiled files
+*.elf
+*.bin
+*.hex
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*~

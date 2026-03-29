@@ -1,0 +1,31 @@
+{
+    "version": 8,
+    "configurePresets": [
+        {
+            "name": "build",
+            "displayName": "build",
+            "description": "正在使用编译器: C = D:\\msys64\\ucrt64\\bin\\arm-none-eabi-gcc.exe, CXX = D:\\msys64\\ucrt64\\bin\\arm-none-eabi-g++.exe",
+            "generator": "MinGW Makefiles",
+            "binaryDir": "${sourceDir}/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "D:/msys64/ucrt64/bin/arm-none-eabi-gcc.exe",
+                "CMAKE_CXX_COMPILER": "D:/msys64/ucrt64/bin/arm-none-eabi-g++.exe",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "GCC 13.3.0 arm-none-eabi (ucrt64)",
+            "displayName": "GCC 13.3.0 arm-none-eabi (ucrt64)",
+            "description": "正在使用编译器: C = D:\\msys64\\ucrt64\\bin\\arm-none-eabi-gcc.exe, CXX = D:\\msys64\\ucrt64\\bin\\arm-none-eabi-g++.exe",
+            "generator": "MinGW Makefiles",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "D:/msys64/ucrt64/bin/arm-none-eabi-gcc.exe",
+                "CMAKE_CXX_COMPILER": "D:/msys64/ucrt64/bin/arm-none-eabi-g++.exe",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        }
+    ]
+}
