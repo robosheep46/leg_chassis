@@ -132,7 +132,7 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
 // /*******************************LEG_PID_INIT******************************* */
     // 腿长控制
     PID_Init_Config_s l_leg_length_pid_conf = {
-        .Kp = 1,
+        .Kp = 5,
         .Kd = 0,
         .Ki = 0,
         .MaxOut = 40,
@@ -143,7 +143,7 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
     PIDInit(&leg_len_pid_l, &l_leg_length_pid_conf);
 
     PID_Init_Config_s r_leg_length_pid_conf = {
-        .Kp = 1,
+        .Kp = 5,
         .Kd = 0,
         .Ki = 0,
         .MaxOut = 40,
@@ -315,8 +315,8 @@ static void leg_control() /* 腿长控制和Roll补偿 */
     static float gravity_ff = 52.34;
     static float roll_extra_comp_p = 400;
     float roll_comp = roll_extra_comp_p * chassis.roll;
-    l_side.F_leg = 0;//5 + PIDCalculate(&leg_len_pid_l, l_side.height, chassis_cmd_recv.l_target_len);
-    r_side.F_leg = 0;//5 + PIDCalculate(&leg_len_pid_r, r_side.height, chassis_cmd_recv.r_target_len);
+    l_side.F_leg = 50 + PIDCalculate(&leg_len_pid_l, l_side.height, chassis_cmd_recv.l_target_len);
+    r_side.F_leg = 50 + PIDCalculate(&leg_len_pid_r, r_side.height, chassis_cmd_recv.r_target_len);
 }
 
 
@@ -326,8 +326,10 @@ static void set_working_state()
     if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE) 
     {
         chassis.yaw = chassis_cmd_recv.offset_angle;
+        chassis.target_v = chassis_cmd_recv.vx;
+
         // 目标速度置0
-        chassis.target_v = 0;
+        // chassis.target_v = 0;
         chassis.dist = chassis.target_dist = 0;
         // return;
     }
@@ -364,6 +366,7 @@ void ChassisTask(void *argument)
 
         // 3. 运动学计算
         phi_transform_theta(&l_side, &chassis);
+     
         phi_transform_theta(&r_side, &chassis);
         calculate_leg_theta_w(&l_side,&chassis);
         calculate_leg_theta_w(&r_side,&chassis);
@@ -400,16 +403,16 @@ void ChassisTask(void *argument)
 
         if(chassis_cmd_recv.chassis_mode == CHASSIS_NO_FOLLOW)
         {
-            // LKMotorSetRef(l_driven,l_side.T_wheel*124.12);
-            // LKMotorSetRef(r_driven,r_side.T_wheel*124.12);
-            LKMotorSetRef(r_driven, 0)   ;
-            LKMotorSetRef(l_driven, 0)   ;
-            DMMotorSetFFTorque(lb, 0)  ;
-            DMMotorSetFFTorque(lf, 0)  ;
+            LKMotorSetRef(l_driven,l_side.T_wheel*124.12);
+            LKMotorSetRef(r_driven,r_side.T_wheel*124.12);
+            // LKMotorSetRef(r_driven, 0)   ;
+            // LKMotorSetRef(l_driven, 0)   ;
+            // DMMotorSetFFTorque(lb, 0)  ;
+            // DMMotorSetFFTorque(lf, 0)  ;
             // DMMotorSetFFTorque(rf, 0)  ; 
             // DMMotorSetFFTorque(rb, 0)  ;
-            // DMMotorSetFFTorque(lb, l_side.T_back )  ;
-            // DMMotorSetFFTorque(lf, l_side.T_front ) ;
+            DMMotorSetFFTorque(lb, l_side.T_back )  ;
+            DMMotorSetFFTorque(lf, l_side.T_front ) ;
             DMMotorSetFFTorque(rf, r_side.T_back )  ; 
             DMMotorSetFFTorque(rb, r_side.T_front)  ;
         }

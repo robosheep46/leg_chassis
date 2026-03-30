@@ -101,7 +101,7 @@ static void BasicSet()
 
         // chassis_cmd_send.turn_position -=  0.000002f*rc_data->rc.rocker_left_y;
         // chassis_cmd_send.change_length -=  0.000002f*rc_data->rc.rocker_right_y;
-        // chassis_cmd_send.vx = 0.0005f * (float)rc_data[TEMP].rc.rocker_right_y;
+        chassis_cmd_send.vx = 0.0007f * (float)rc_data[TEMP].rc.rocker_left_y;
         // chassis_cmd_send.l_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_right_x;
         // chassis_cmd_send.r_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_right_x;
         // chassis_cmd_send.l_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_left_y;

@@ -24,8 +24,8 @@ void GetChassisAccel()
 void observe_speed(LegParam *lp, LegParam *rp, ChassisParam *cp, attitude_t *imu, float delta_t)
 {
     // 修正轮速和距离
-    lp->wheel_w = lp->w_ecd *WHEEL_RADIUS *2*PI/60; // 减去和定子固连的phi2_w
-    rp->wheel_w = rp->w_ecd *WHEEL_RADIUS *2*PI/60;
+    lp->wheel_w = lp->w_ecd *WHEEL_RADIUS *2*PI/30; // 减去和定子固连的phi2_w
+    rp->wheel_w = rp->w_ecd *WHEEL_RADIUS *2*PI/30;
     cp->vel_m = (lp->wheel_w - rp->wheel_w) / 2; // 机体速度(平动)为两侧速度的平均值
     cp->vel = cp->vel_m;
     // cp->v_kf.MeasuredVector[0] =  cp->vel_m;
