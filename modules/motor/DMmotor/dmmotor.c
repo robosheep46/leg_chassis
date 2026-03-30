@@ -148,7 +148,7 @@ static void DMMotorDecode(CANInstance *motor_can)
     }
     if(motor->init_flag == 0)
     {
-        motor->init_flag == 1;
+        motor->init_flag = 1;
         DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);    
         dwt_delay(0.1);
     }
@@ -157,6 +157,8 @@ static void DMMotorDecode(CANInstance *motor_can)
 static void DMMotorLostCallback(void *motor_ptr)
 {
     DMMotorInstance *motor = (DMMotorInstance *)motor_ptr;
+    DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);
+    dwt_delay(0.1);
     motor->init_flag = 0;
     memset(&(motor->measure), 0, sizeof(motor->measure));
 }
@@ -201,8 +203,8 @@ DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
     motor->motor_daemon = DaemonRegister(&conf);
 
     DMMotorEnable(motor);
-    // DMMotorCaliEncoder(motor);
-
+    DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);    
+    dwt_delay(0.1);
     dm_motor_instance[idx++] = motor;
     return motor;
 }

@@ -5,6 +5,7 @@
 #include "robot_def.h"
 
 #include "board2board.h"
+#include "usart_task.h"
 // module
 #include "remote_control.h"
 #include "ins_task.h"
@@ -58,15 +59,15 @@ void ChassisCMDInit(RobotCtrlQueues_t *control_queue)
     rc_data = RemoteControlInit(&huart5);       // 遥控器通信串口初始化
     #endif // DEBUG
 
-    // CreateUsartTask();
+    create_usart_task();
 
     static QueueHandle_t buzzer_queue = NULL;
     buzzer_queue = xQueueCreate(10, sizeof(Buzzer_Event_t));
     buzzer = BuzzerRegister(buzzer_queue);
     CreateDaemon(buzzer);
 
-    chassis_cmd_send.l_target_len = 0.18;
-    chassis_cmd_send.r_target_len = 0.18;
+    chassis_cmd_send.l_target_len = 0.3;
+    chassis_cmd_send.r_target_len = 0.3;
     #if defined (CHASSIS_BOARD) || defined (CHASSIS_BOARD_CONTROL_CHASSIS)
     cmd_control_chassis_queue = control_queue->control_chassis_queue;
     #endif

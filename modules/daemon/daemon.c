@@ -92,7 +92,7 @@ void DaemonTask(void *argument)
                 // 检查是否有其他模块超时
                 for (size_t j = 0; j < idx; j++)
                 {
-                    if (i != j && daemon_instances[j]->temp_count <= 0)
+                    if (i != j && daemon_instances[j]->temp_count <= 0&&daemon_instances[j]->other_modules_error_callback!=NULL)
                     {
                         // 第j个模块超时了，通知第i个模块
                         dins->other_modules_error_callback(daemon_instances[i]->owner_id);

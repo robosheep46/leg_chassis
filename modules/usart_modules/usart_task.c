@@ -23,7 +23,7 @@ void usart_task(void *argument)
 
     for (;;) 
     {
-        for (uint8_t i = 0; i < 3; i++) 
+        for (uint8_t i = 0; i < 1; i++) 
         {
             inst = usart_instance[i];
             bits = xEventGroupGetBits(inst->xEventGroup);
