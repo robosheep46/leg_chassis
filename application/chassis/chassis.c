@@ -268,7 +268,7 @@ static void set_leg_data()
     l_side.phi4_angle = 0 + lb->measure.real_total_angle +8;
     l_side.phi4_w =   lb->measure.velocity;
 
-    l_side.w_ecd = l_driven->measure.speed_rads/6;
+    l_side.w_ecd = l_driven->measure.speed_rads;
     l_side.pitch   =  chassis_imu_data->pitch * DEGREE_2_RAD;
     l_side.pitch_w =  chassis_imu_data->gyro[0];
 
@@ -281,7 +281,7 @@ static void set_leg_data()
     r_side.phi4_w =   rf->measure.velocity;
 
     // LK9025电机顺时针为负 +
-    r_side.w_ecd = r_driven->measure.speed_rads/6;
+    r_side.w_ecd = r_driven->measure.speed_rads;
     
     r_side.pitch   = -(chassis_imu_data->pitch ) * DEGREE_2_RAD;
     r_side.pitch_w = -chassis_imu_data->gyro[0];
