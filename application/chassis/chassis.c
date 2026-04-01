@@ -30,8 +30,9 @@ static DMMotorInstance *lf, *lb, *rf, *rb,*joint[4]; // 双马达
 static attitude_t *chassis_imu_data;
 // static Robot_Status_e chassis_status;
 
+
 static ChassisParam chassis; 
-static LegParam l_side, r_side;
+static LegParam l_side, r_side; 
 
 static uint32_t balance_dwt_cnt;
 static float del_t;
@@ -273,7 +274,7 @@ static void set_leg_data()
     l_side.pitch_w =  chassis_imu_data->gyro[0];
 
     //小腿phi 0  大腿phi1 180
-    r_side.phi1 = (180 + rb->measure.real_total_angle  -10) *PI/180;
+    r_side.phi1 = (180 + rb->measure.real_total_angle  -4) *PI/180;
     r_side.phi1_angle = (180 + rb->measure.real_total_angle  -10);
     r_side.phi1_w =  rb->measure.velocity;
     r_side.phi4 = ( 0 + rf->measure.real_total_angle + 9) *PI/180;
@@ -315,8 +316,8 @@ static void leg_control() /* 腿长控制和Roll补偿 */
     static float gravity_ff = 52.34;
     static float roll_extra_comp_p = 400;
     float roll_comp = roll_extra_comp_p * chassis.roll;
-    l_side.F_leg = 50 + PIDCalculate(&leg_len_pid_l, l_side.height, chassis_cmd_recv.l_target_len);
-    r_side.F_leg = 50 + PIDCalculate(&leg_len_pid_r, r_side.height, chassis_cmd_recv.r_target_len);
+    l_side.F_leg = 90 + PIDCalculate(&leg_len_pid_l, l_side.height, chassis_cmd_recv.l_target_len);
+    r_side.F_leg = 90 + PIDCalculate(&leg_len_pid_r, r_side.height, chassis_cmd_recv.r_target_len);
 }
 
 
@@ -378,16 +379,16 @@ void ChassisTask(void *argument)
         set_left_leg_six_states(&l_side, &chassis)  ;
         set_right_leg_six_states(&r_side, &chassis) ;
 
-        calculate_wheel_torgue(&l_side,  &chassis);
-        calculate_wheel_torgue(&r_side, &chassis);
+        calculate_wheel_torgue(&l_side,  &chassis); 
+        calculate_wheel_torgue(&r_side, &chassis); 
         
-        leg_control();
+        leg_control(); 
 
 
-        calculate_leg_torgue(&l_side);
-        calculate_leg_torgue(&r_side);
+        calculate_leg_torgue(&l_side); 
+        calculate_leg_torgue(&r_side); 
 
-        // SynthesizeMotion();
+        SynthesizeMotion();
 
 
         // // 6. calculate_leg_torgue 算 T_front、T_back
@@ -403,14 +404,16 @@ void ChassisTask(void *argument)
 
         if(chassis_cmd_recv.chassis_mode == CHASSIS_NO_FOLLOW)
         {
+            // LKMotorSetRef(r_driven, 0) ; 
+            // LKMotorSetRef(l_driven, 0) ; 
+            // DMMotorSetFFTorque(lb, 0)  ; 
+            // DMMotorSetFFTorque(lf, 0)  ; 
+            // DMMotorSetFFTorque(rf, 0)  ; 
+            // DMMotorSetFFTorque(rb, 0)  ; 
+
             LKMotorSetRef(l_driven,l_side.T_wheel*124.12);
             LKMotorSetRef(r_driven,r_side.T_wheel*124.12);
-            // LKMotorSetRef(r_driven, 0)   ;
-            // LKMotorSetRef(l_driven, 0)   ;
-            // DMMotorSetFFTorque(lb, 0)  ;
-            // DMMotorSetFFTorque(lf, 0)  ;
-            // DMMotorSetFFTorque(rf, 0)  ; 
-            // DMMotorSetFFTorque(rb, 0)  ;
+
             DMMotorSetFFTorque(lb, l_side.T_back )  ;
             DMMotorSetFFTorque(lf, l_side.T_front ) ;
             DMMotorSetFFTorque(rf, r_side.T_back )  ; 
