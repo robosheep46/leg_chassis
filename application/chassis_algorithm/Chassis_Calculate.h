@@ -13,6 +13,6 @@ void calculate_leg_torgue(LegParam * leg);
 void calculate_wheel_torgue(LegParam *leg, ChassisParam *chassis);
 
 
-void calculate_support_force(LegParam *leg, imu_data_t *imu);
+void calculate_support_force(LegParam *leg, attitude_t *imu);
 
 #endif

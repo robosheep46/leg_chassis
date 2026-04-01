@@ -21,6 +21,7 @@
 #include "user_lib.h"
 #include "general_def.h"
 #include <stdlib.h>
+#include <string.h>
 
 static TaskHandle_t imu_task_handle;
 
@@ -193,6 +194,7 @@ void INS_Task(void *argument)
             imu_data->yaw_total_angle = INS.YawTotalAngle;
             memcpy(imu_data->gyro, INS.Gyro, sizeof(INS.Gyro));
             memcpy(imu_data->accel, INS.Accel, sizeof(INS.Accel));
+            memcpy(imu_data->MotionAccel_b,INS.MotionAccel_b, sizeof(INS.MotionAccel_b));
         }
         osDelay(1);
         // // temperature control

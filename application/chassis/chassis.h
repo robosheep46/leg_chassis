@@ -1,6 +1,7 @@
 #ifndef CHASSIS_H
 #define CHASSIS_H
 
+#include <math.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "kalman_filter.h"
@@ -41,15 +42,6 @@
 #define M_PI 3.14159265358979323846f
 #define M_PI_2 1.57079632679489661923f
 
-// 平衡底盘模式
-typedef enum {
-    BALANCE_OFF = 0,        // 关闭
-    BALANCE_SAFE,           // 安全模式
-    BALANCE_STAND_UP,       // 起立模式  
-    BALANCE_CALIBRATE,      // 校准模式
-    BALANCE_NORMAL,         // 正常平衡模式
-    BALANCE_DEBUG           // 调试模式
-} BalanceMode_e;
 
 // 五连杆腿部参数
 typedef struct {
@@ -103,48 +95,22 @@ typedef struct {
 } LegState_t;
 
 
-
-// 离地检测器
-typedef struct {
-    uint32_t takeoff_time, touch_time;
-    uint8_t is_takeoff;
-    float support_force;
-} TakeoffDetector;
-
 // 主底盘参数结构体
-typedef struct {
-    // 电机反馈
-    float f_motor_vel, b_motor_vel;
-    
-    // 腿端运动学
-    float dL0_dPhi0[2];
-    
-    // 控制目标
-    float target_leg_len, target_dL0, target_theta, target_theta_w;
-    float target_phi0, target_dPhi0, target_dist;
-    float target_pitch, target_pitch_w, target_yaw;
+typedef struct 
+{
     
     // 当前状态
-    float dist, pitch, pitch_w, yaw,yaw_w, wz,roll,roll_w;
-    
+    float pitch, pitch_w, wz,roll,roll_w;
+    float target_yaw, yaw;
+    float target_yaw_w,yaw_w;
+    float target_dist,dist;
     // 速度
     float vel, target_v;        // 底盘速度
     float vel_m;                // 底盘速度测量值
-    float vel_predict;          // 底盘速度预测值
     float vel_cov;              // 速度方差
-    float acc_m, acc_last;      // 水平方向加速度,用于计算速度预测值
-
-        
-    // 物理参数
-    float body_mass, wheel_mass;
     
     LegState_t leg_state[2];
-    
-    // 系统状态
-    uint32_t last_time, duration;
-    uint8_t error_code;
-    BalanceMode_e balance_mode;
-    uint8_t predicted_flag;
+
 
     KalmanFilter_t v_kf;  // 观测车体速度
 } ChassisParam;

@@ -33,6 +33,8 @@ typedef struct
     float pitch;
     float yaw;
     float yaw_total_angle;
+    float MotionAccel_b[3]; // 机体坐标加速度
+
 } attitude_t; // 最终解算得到的角度,以及yaw转动的总角度(方便多圈控制)
 
 typedef struct

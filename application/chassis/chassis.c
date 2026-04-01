@@ -181,7 +181,7 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
     PIDInit(&steer_p_pid, &steer_p_pid_conf);
     // 速度环
     PID_Init_Config_s steer_v_pid_conf = {
-        .Kp = 0.001 ,
+        .Kp = 3 ,
         .Kd = 0.0f,
         .Ki = 0.0f,
         .MaxOut = 20,
@@ -261,11 +261,11 @@ static void set_leg_data()
     // DM8009 电机的角度是逆时针为正 ,这里顺时针转是增加角度
     // LK9025 电机的角度是逆时针为正 ，右轮电机速度为正。
     //小腿 phi1 180  大腿 phi4 0 
-    l_side.phi1 = ( 180  + lf->measure.real_total_angle  -9)*PI/180 ;
-    l_side.phi1_angle = 180 + lf->measure.real_total_angle -9;
+    l_side.phi1 = ( 180  + lf->measure.real_total_angle  -12)*PI/180 ;
+    l_side.phi1_angle = 180 + lf->measure.real_total_angle -12;
     l_side.phi1_w =  lf->measure.velocity;
-    l_side.phi4 = (  0 +  lb->measure.real_total_angle +8 )*PI/180 ;
-    l_side.phi4_angle = 0 + lb->measure.real_total_angle +8;
+    l_side.phi4 = (  0 +  lb->measure.real_total_angle +6 )*PI/180 ;
+    l_side.phi4_angle = 0 + lb->measure.real_total_angle +6;
     l_side.phi4_w =   lb->measure.velocity;
 
     l_side.w_ecd = l_driven->measure.speed_rads;
@@ -290,10 +290,10 @@ static void set_leg_data()
 
 static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
 {
-    // float p_ref = PIDCalculate(&steer_p_pid, chassis.yaw, chassis.target_yaw);
-    // PIDCalculate(&steer_v_pid, chassis.wz, p_ref);
-    // l_side.real_T_wheel = l_side.real_T_wheel - steer_v_pid.Output;
-    // r_side.real_T_wheel = r_side.real_T_wheel + steer_v_pid.Output;
+    float p_ref = PIDCalculate(&steer_p_pid, chassis.yaw, chassis.target_yaw);
+    PIDCalculate(&steer_v_pid, chassis.wz, p_ref);
+    l_side.real_T_wheel = l_side.T_wheel - steer_v_pid.Output;
+    r_side.real_T_wheel = r_side.T_wheel - steer_v_pid.Output;
 
 
     // // 抗劈叉
@@ -366,7 +366,6 @@ void ChassisTask(void *argument)
 
         // 3. 运动学计算
         phi_transform_theta(&l_side, &chassis);
-     
         phi_transform_theta(&r_side, &chassis);
         calculate_leg_theta_w(&l_side,&chassis);
         calculate_leg_theta_w(&r_side,&chassis);
@@ -388,29 +387,22 @@ void ChassisTask(void *argument)
         calculate_leg_torgue(&r_side);
 
         // SynthesizeMotion();
-
-
-        // // 6. calculate_leg_torgue 算 T_front、T_back
-        // calculate_leg_torgue(&l_side);
-        // calculate_leg_torgue(&r_side);
-
-        // SynthesizeMotion();
         // 7. 算支持力
-        // calculate_support_force(&l_side, &Chassis_IMU_data);
-        // calculate_support_force(&r_side, &Chassis_IMU_data);
-
-
+        // calculate_support_force(&l_side, chassis_imu_data);
+        // calculate_support_force(&r_side, chassis_imu_data);
 
         if(chassis_cmd_recv.chassis_mode == CHASSIS_NO_FOLLOW)
         {
-            LKMotorSetRef(l_driven,l_side.T_wheel*124.12);
-            LKMotorSetRef(r_driven,r_side.T_wheel*124.12);
             // LKMotorSetRef(r_driven, 0)   ;
             // LKMotorSetRef(l_driven, 0)   ;
             // DMMotorSetFFTorque(lb, 0)  ;
             // DMMotorSetFFTorque(lf, 0)  ;
             // DMMotorSetFFTorque(rf, 0)  ; 
             // DMMotorSetFFTorque(rb, 0)  ;
+
+            LKMotorSetRef(l_driven,l_side.real_T_wheel*124.12);
+            LKMotorSetRef(r_driven,r_side.real_T_wheel*124.12);
+
             DMMotorSetFFTorque(lb, l_side.T_back )  ;
             DMMotorSetFFTorque(lf, l_side.T_front ) ;
             DMMotorSetFFTorque(rf, r_side.T_back )  ; 
