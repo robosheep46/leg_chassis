@@ -5,6 +5,7 @@
 #include "daemon.h"
 #include "bsp_dwt.h"
 #include <stdint.h>
+#include <string.h>
 
 static uint8_t idx;
 static LKMotorInstance *lkmotor_instance[LK_MOTOR_MX_CNT] = {NULL};
@@ -47,7 +48,7 @@ static void LKMotorDecode(CANInstance *_instance)
     uint8_t *rx_buff = _instance->rx_buff;
 
     DaemonReload(motor->daemon); // 喂狗
-    measure->feed_dt = DWT_GetDeltaT(&measure->feed_dwt_cnt);
+    measure->feed_dt = dwt_get_delta_time(&measure->feed_dwt_cnt);
 
     measure->last_ecd = measure->ecd;
     measure->ecd = (uint16_t)((rx_buff[7] << 8) | rx_buff[6]);
@@ -68,10 +69,16 @@ static void LKMotorDecode(CANInstance *_instance)
         measure->total_round++;
     measure->total_angle = measure->total_round * 360 + measure->angle_single_round;
 }
+static void lk_motor_other_modules_error_callback(void *motor_ptr)
+{
+    LKMotorInstance *motor = (LKMotorInstance *)motor_ptr;
+    motor->other_error_flag = 1;
+}
 
 static void LKMotorLostCallback(void *motor_ptr)
 {
     LKMotorInstance *motor = (LKMotorInstance *)motor_ptr;
+    memset(&(motor->measure), 0, sizeof(motor->measure));
 }
 
 LKMotorInstance *LKMotorInit(Motor_Init_Config_s *config)
@@ -87,14 +94,15 @@ LKMotorInstance *LKMotorInit(Motor_Init_Config_s *config)
     config->can_init_config.can_module_callback = LKMotorDecode;
     config->can_init_config.rx_id = config->can_init_config.tx_id+0x140;
     config->can_init_config.tx_id = config->can_init_config.tx_id+0x140;
-    motor->motor_can_ins = CANRegister(&config->can_init_config);
+    motor->motor_can_ins = can_register(&config->can_init_config);
     MotorSenderGrouping(motor,config);
     LKMotorEnable(motor);
-    DWT_GetDeltaT(&motor->measure.feed_dwt_cnt);
+    dwt_get_delta_time(&motor->measure.feed_dwt_cnt);
     lkmotor_instance[idx++] = motor;
 
     Daemon_Init_Config_s daemon_config = {
-        .callback = LKMotorLostCallback,
+        .owner_callback = LKMotorLostCallback,
+        .other_modules_error_callback = lk_motor_other_modules_error_callback,
         .owner_id = motor,
         .reload_count = 50, // 50ms
     };
@@ -119,20 +127,38 @@ void LKMotorControl()
         pid_ref = motor->pid_ref; // 保存设定值,防止motor_controller->pid_ref在计算过程中被修改
         set = (int16_t)pid_ref;        
         group = motor->sender_group;
+
         // // 设置tx_buff[0]为0xa1
         lk_sender_assignment[group].tx_buff[0] = 0xA1 ;
         lk_sender_assignment[group].tx_buff[1] = 0;
         lk_sender_assignment[group].tx_buff[2] = 0;
         lk_sender_assignment[group].tx_buff[3] = 0;
-        lk_sender_assignment[group].tx_buff[4] = (uint8_t)(set & 0x00ff);  // 低八位;
-        lk_sender_assignment[group].tx_buff[5] = (uint8_t)(set >> 8);       
+        if(motor->other_error_flag)
+        {
+            lk_sender_assignment[group].tx_buff[4] = 0;  // 低八位;
+            lk_sender_assignment[group].tx_buff[5] = 0;   
+        }
+        else
+        {
+            if(motor->stop_flag == MOTOR_STOP)
+            {
+                lk_sender_assignment[group].tx_buff[4] = 0;  // 低八位;
+                lk_sender_assignment[group].tx_buff[5] = 0;   
+            }
+            else
+            {
+                lk_sender_assignment[group].tx_buff[4] = (uint8_t)(set & 0x00ff);  // 低八位;
+                lk_sender_assignment[group].tx_buff[5] = (uint8_t)(set >> 8);       
+            }
+        }
+
         lk_sender_assignment[group].tx_buff[6] = 0;
         lk_sender_assignment[group].tx_buff[7] = 0;
     }
 
     for(uint8_t i=0 ;i<2;i++)
     {
-        CANTransmit(&lk_sender_assignment[i], 1);
+        can_transmit(&lk_sender_assignment[i], 1);
     }
 }
 

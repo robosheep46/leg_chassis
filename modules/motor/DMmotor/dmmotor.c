@@ -2,6 +2,7 @@
 #include "cmsis_os2.h"
 #include "memory.h"
 #include "general_def.h"
+#include "motor_def.h"
 #include "user_lib.h"
 #include "cmsis_os.h"
 #include "string.h"
@@ -23,7 +24,6 @@ static CANInstance dm_sender_assignment[4] = {
     [1] = {.can_handle = &hfdcan2, .txconf.Identifier = 0x02, .txconf.IdType = FDCAN_STANDARD_ID, .txconf.TxFrameType = FDCAN_DATA_FRAME, .txconf.DataLength = 0x08, .tx_buff = {0}},
     [2] = {.can_handle = &hfdcan1, .txconf.Identifier = 0x03, .txconf.IdType = FDCAN_STANDARD_ID, .txconf.TxFrameType = FDCAN_DATA_FRAME, .txconf.DataLength = 0x08, .tx_buff = {0}},
     [3] = {.can_handle = &hfdcan1, .txconf.Identifier = 0x04, .txconf.IdType = FDCAN_STANDARD_ID, .txconf.TxFrameType = FDCAN_DATA_FRAME, .txconf.DataLength = 0x08, .tx_buff = {0}},
-
 };
 
 static void MotorSenderGrouping(DMMotorInstance *motor, CAN_Init_Config_s *config)
@@ -37,24 +37,29 @@ static void MotorSenderGrouping(DMMotorInstance *motor, CAN_Init_Config_s *confi
         motor_grouping = 0;
         motor->motor_can_instace->txconf.Identifier = 0x01;
         enable_flag[0]=1;
+        dm_sender_assignment[0].tx_id = motor->motor_can_instace->tx_id;
+
     }
     else if(motor->motor_can_instace->tx_id == 0x02)
     {
         motor_grouping = 1;
         motor->motor_can_instace->txconf.Identifier = 0x02;
         enable_flag[1]=1;
+        dm_sender_assignment[1].tx_id = motor->motor_can_instace->tx_id;
     }
     else if(motor->motor_can_instace->tx_id == 0x03)
     {
         motor_grouping = 2;
         motor->motor_can_instace->txconf.Identifier = 0x03;
         enable_flag[2]=1;
+        dm_sender_assignment[2].tx_id = motor->motor_can_instace->tx_id;
     }
     else if(motor->motor_can_instace->tx_id == 0x04)
     {
         motor_grouping = 3;
         motor->motor_can_instace->txconf.Identifier = 0x04;
         enable_flag[3]=1;
+        dm_sender_assignment[3].tx_id = motor->motor_can_instace->tx_id;
     }
     motor->sender_group = motor_grouping;
 }
@@ -79,7 +84,7 @@ static void DMMotorSetMode(DMMotor_Mode_e cmd, DMMotorInstance *motor)
 {
     memset(motor->motor_can_instace->tx_buff, 0xff, 7);  // 发送电机指令的时候前面7bytes都是0xff
     motor->motor_can_instace->tx_buff[7] = (uint8_t)cmd; // 最后一位是命令id
-    CANTransmit(motor->motor_can_instace, 1);
+    can_transmit(motor->motor_can_instace, 1);
 }
 
 static void DMMotorDecode(CANInstance *motor_can)
@@ -141,22 +146,33 @@ static void DMMotorDecode(CANInstance *motor_can)
         measure->real_angle_single_round += 360.0f;
         measure->real_total_round--;
     }
-
-
+    if(motor->init_flag == 0)
+    {
+        motor->init_flag = 1;
+        DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);    
+        dwt_delay(0.1);
+    }
 }
 
 static void DMMotorLostCallback(void *motor_ptr)
 {
     DMMotorInstance *motor = (DMMotorInstance *)motor_ptr;
-    DMMotorEnable(motor);
     DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);
-    DWT_Delay(0.1);
+    dwt_delay(0.1);
+    motor->init_flag = 0;
+    memset(&(motor->measure), 0, sizeof(motor->measure));
+}
+
+static void dm_motor_other_error_callback(void *motor_ptr)
+{
+    DMMotorInstance *motor = (DMMotorInstance *)motor_ptr;
+    motor->other_error_flag = 1;
 }
 
 void DMMotorCaliEncoder(DMMotorInstance *motor)
 {
     DMMotorSetMode(DM_CMD_ZERO_POSITION, motor);
-    DWT_Delay(0.1);
+    dwt_delay(0.1);
 }
 DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
 {
@@ -175,11 +191,12 @@ DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
     motor->motor_can_instace->rx_id = config->can_init_config.rx_id;
     config->can_init_config.can_module_callback = DMMotorDecode;
     config->can_init_config.id = motor;
-    motor->motor_can_instace = CANRegister(&config->can_init_config);
+    motor->motor_can_instace = can_register(&config->can_init_config);
     MotorSenderGrouping(motor,&config->can_init_config);
 
     Daemon_Init_Config_s conf = {
-        .callback = DMMotorLostCallback,
+        .owner_callback = DMMotorLostCallback,
+        .other_modules_error_callback = dm_motor_other_error_callback,
         .owner_id = motor,
         .reload_count = 10,
     };
@@ -187,9 +204,7 @@ DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
 
     DMMotorEnable(motor);
     DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);    
-    DWT_Delay(0.1);
-    // DMMotorCaliEncoder(motor);
-
+    dwt_delay(0.1);
     dm_motor_instance[idx++] = motor;
     return motor;
 }
@@ -229,7 +244,11 @@ void DMMotorEnable(DMMotorInstance *motor)
 
 void DMMotorStop(DMMotorInstance *motor)//不使用使能模式是因为需要收到反馈
 {
-    motor->stop_flag = MOTOR_STOP;
+    motor->motor_controller.angle_PID.Ref = 0;
+    motor->motor_controller.speed_PID.Ref = 0;
+    motor->motor_controller.current_PID.Ref = 0;
+    motor->motor_controller.angle_PID.Kp = 0;
+    motor->motor_controller.speed_PID.Kd = 0;
 }
 
 void DMMotorOuterLoop(DMMotorInstance *motor, Closeloop_Type_e type)
@@ -257,19 +276,35 @@ void DMMotorTask(void *argument)
         {   
             motor = dm_motor_instance[i];
             group = motor->sender_group;
-
-            if(motor->set_run_mode_flag==0)
+            if(motor->other_error_flag)
             {
-                DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);
-                DWT_Delay(0.1);
-                motor->set_run_mode_flag=1;
-                motor->set_stop_mode_flag=0;
+                motor_send_mailbox.position_des = float_to_uint(0, DM_P_MIN, DM_P_MAX, 16);
+                motor_send_mailbox.velocity_des = float_to_uint(0, DM_V_MIN, DM_V_MAX, 12);
+                motor_send_mailbox.torque_des   = float_to_uint(0, DM_T_MIN, DM_T_MAX, 12);
+                motor_send_mailbox.Kp = float_to_uint(0, DM_KP_MIN, DM_KP_MAX, 12);
+                motor_send_mailbox.Kd = float_to_uint(0, DM_KD_MIN, DM_KD_MAX, 12); 
             }
-            motor_send_mailbox.position_des = float_to_uint(motor->motor_controller.angle_PID.Ref, DM_P_MIN, DM_P_MAX, 16);
-            motor_send_mailbox.velocity_des = float_to_uint(motor->motor_controller.speed_PID.Ref, DM_V_MIN, DM_V_MAX, 12);
-            motor_send_mailbox.torque_des   = float_to_uint(motor->motor_controller.current_PID.Ref, DM_T_MIN, DM_T_MAX, 12);
-            motor_send_mailbox.Kp = float_to_uint(motor->motor_controller.angle_PID.Kp, DM_KP_MIN, DM_KP_MAX, 12);
-            motor_send_mailbox.Kd = float_to_uint(motor->motor_controller.speed_PID.Kd, DM_KD_MIN, DM_KD_MAX, 12);
+            else
+            {
+                if (motor->stop_flag == MOTOR_STOP) 
+                {
+                    motor_send_mailbox.position_des = float_to_uint(0, DM_P_MIN, DM_P_MAX, 16);
+                    motor_send_mailbox.velocity_des = float_to_uint(0, DM_V_MIN, DM_V_MAX, 12);
+                    motor_send_mailbox.torque_des   = float_to_uint(0, DM_T_MIN, DM_T_MAX, 12);
+                    motor_send_mailbox.Kp = float_to_uint(0, DM_KP_MIN, DM_KP_MAX, 12);
+                    motor_send_mailbox.Kd = float_to_uint(0, DM_KD_MIN, DM_KD_MAX, 12);            
+                }
+                else 
+                {
+                    motor_send_mailbox.position_des = float_to_uint(motor->motor_controller.angle_PID.Ref, DM_P_MIN, DM_P_MAX, 16);
+                    motor_send_mailbox.velocity_des = float_to_uint(motor->motor_controller.speed_PID.Ref, DM_V_MIN, DM_V_MAX, 12);
+                    motor_send_mailbox.torque_des   = float_to_uint(motor->motor_controller.current_PID.Ref, DM_T_MIN, DM_T_MAX, 12);
+                    motor_send_mailbox.Kp = float_to_uint(motor->motor_controller.angle_PID.Kp, DM_KP_MIN, DM_KP_MAX, 12);
+                    motor_send_mailbox.Kd = float_to_uint(motor->motor_controller.speed_PID.Kd, DM_KD_MIN, DM_KD_MAX, 12);
+                }
+            }
+
+
             //设定位置_速度_p_d_力矩
             dm_sender_assignment[i].tx_buff[0]=(uint8_t)(motor_send_mailbox.position_des >> 8);
             dm_sender_assignment[i].tx_buff[1] = (uint8_t)(motor_send_mailbox.position_des);
@@ -279,7 +314,10 @@ void DMMotorTask(void *argument)
             dm_sender_assignment[i].tx_buff[5] = (uint8_t)(motor_send_mailbox.Kd >> 4);
             dm_sender_assignment[i].tx_buff[6] = (uint8_t)(((motor_send_mailbox.Kd & 0xF) << 4) | (motor_send_mailbox.torque_des >> 8));
             dm_sender_assignment[i].tx_buff[7] = (uint8_t)(motor_send_mailbox.torque_des);
-            CANTransmit(&dm_sender_assignment[i], 1);
+            if(motor->init_flag == 1)
+            {
+                can_transmit(&dm_sender_assignment[i], 1);
+            }
         }
         osDelay(2);
     }

@@ -64,6 +64,8 @@ typedef struct
     DaemonInstance* motor_daemon;
     uint32_t lost_cnt;
     uint8_t sender_group;
+    uint8_t init_flag;
+    uint8_t other_error_flag;
 }DMMotorInstance;
 
 typedef enum

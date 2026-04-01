@@ -26,11 +26,11 @@ typedef struct
 } PWM_Init_Config_s;
 
 
-PWMInstance *PWMRegister(PWM_Init_Config_s *PWM_config);
-void PWMStart(PWMInstance *pwm);
-void PWMSetDutyRatio(PWMInstance *pwm, float dutyratio);
-void PWMStop(PWMInstance *pwm);
-void PWMSetPeriod(PWMInstance *pwm, float period);
+PWMInstance *pwm_register(PWM_Init_Config_s *PWM_config);
+void pwm_start(PWMInstance *pwm);
+void pwm_set_duty_ratio(PWMInstance *pwm, float dutyratio);
+void pwm_stop(PWMInstance *pwm);
+void pwm_set_period(PWMInstance *pwm, float period);
 
  
  #endif // BSP_PWM_H

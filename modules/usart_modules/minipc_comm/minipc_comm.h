@@ -4,8 +4,8 @@
 #include "bsp_usart.h"
 #include <stdint.h>
 
-#define Minipc_Recv_SIZE 9u 
-#define Minipc_Send_SIZE 16u
+#define MINIPC_RECV_SIZE 9u 
+#define MINIPC_SEND_SIDE 16u
 #define MINIPC_FRAME_HEADER 0XA5
 #define MINIPC_RECV_HEADER 0X5A
 
@@ -18,7 +18,7 @@ typedef enum {
 
 
 typedef struct {
-    uint8_t buffer[Minipc_Recv_SIZE];
+    uint8_t buffer[MINIPC_RECV_SIZE];
     uint8_t index;
     uint8_t ready;  // 标志是否累积了完整的一帧
 } minipc_data_buffer_t;

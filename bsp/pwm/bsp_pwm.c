@@ -5,7 +5,7 @@
 static PWMInstance *pwm_instance[PWM_DEVICE_CNT] = {NULL}; // 所有的pwm instance保存于此
 static uint8_t idx;
 
-PWMInstance *PWMRegister(PWM_Init_Config_s *PWM_config)
+PWMInstance *pwm_register(PWM_Init_Config_s *PWM_config)
 {
     PWMInstance *pwm = (PWMInstance *)malloc(sizeof(PWMInstance));
     memset(pwm, 0, sizeof(PWMInstance));
@@ -19,22 +19,22 @@ PWMInstance *PWMRegister(PWM_Init_Config_s *PWM_config)
     return pwm;
 }
 
-void PWMStart(PWMInstance *_instance)
+void pwm_start(PWMInstance *_instance)
 {
     HAL_TIM_PWM_Start(_instance->htim, _instance->channel);
 }
 
-void PWMStop(PWMInstance *_instance)
+void pwm_stop(PWMInstance *_instance)
 {
     HAL_TIM_PWM_Stop(_instance->htim, _instance->channel);
 }
 
-void PWMSetDutyRatio(PWMInstance *_instance, float dutyratio)
+void pwm_set_duty_ratio(PWMInstance *_instance, float dutyratio)
 {
     __HAL_TIM_SetCompare(_instance->htim,_instance->channel, dutyratio * (_instance->htim->Instance->ARR));
 }
 
-void PWMSetPeriod(PWMInstance *_instance, float period)
+void pwm_set_period(PWMInstance *_instance, float period)
 {
     //HCLK为最大时钟频率 72MHZ，Prescaler为PSC的值
     __HAL_TIM_SetAutoreload(_instance->htim,period * HCLK /(_instance->htim->Init.Prescaler+1));

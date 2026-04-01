@@ -6,7 +6,7 @@
 static SPIInstance *spi_instance[SPI_DEVICE_CNT] = {NULL};
 static uint8_t idx = 0;                         // 配合中断以及初始化
 
-SPIInstance *SPIRegister(SPI_Init_Config_s *conf)
+SPIInstance *spi_register(SPI_Init_Config_s *conf)
 {
     if (idx >= MX_SPI_BUS_SLAVE_CNT) // 超过最大实例数
         while (1)
@@ -22,7 +22,7 @@ SPIInstance *SPIRegister(SPI_Init_Config_s *conf)
     return instance;
 }
 
-void SPITransmit(SPIInstance *spi_ins, uint8_t *ptr_data, uint8_t len)
+void spi_transmit(SPIInstance *spi_ins, uint8_t *ptr_data, uint8_t len)
 {
     // 拉低片选,开始传输(选中从机)
     HAL_GPIO_WritePin(spi_ins->GPIOx, spi_ins->cs_pin, GPIO_PIN_RESET);
@@ -32,7 +32,7 @@ void SPITransmit(SPIInstance *spi_ins, uint8_t *ptr_data, uint8_t len)
     spi_ins->CS_State =HAL_GPIO_ReadPin(spi_ins->GPIOx, spi_ins->cs_pin);
 }
 
-void SPIRecv(SPIInstance *spi_ins, uint8_t *ptr_data, uint8_t len)
+void spi_receive(SPIInstance *spi_ins, uint8_t *ptr_data, uint8_t len)
 {
     // 用于稍后回调使用
     spi_ins->rx_size = len;
@@ -45,7 +45,7 @@ void SPIRecv(SPIInstance *spi_ins, uint8_t *ptr_data, uint8_t len)
     spi_ins->CS_State =HAL_GPIO_ReadPin(spi_ins->GPIOx, spi_ins->cs_pin);
 }
 
-void SPITransRecv(SPIInstance *spi_ins, uint8_t *ptr_data_rx, uint8_t *ptr_data_tx, uint8_t len)
+void spi_transmit_receive(SPIInstance *spi_ins, uint8_t *ptr_data_rx, uint8_t *ptr_data_tx, uint8_t len)
 {
     spi_ins->rx_size = len;
     spi_ins->rx_buffer = ptr_data_rx;

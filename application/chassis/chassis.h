@@ -90,6 +90,9 @@ typedef struct {
     float real_T_back, real_T_front;
     float w_ecd;
     float pitch ,pitch_w;
+    float wheel_state[6];
+    float leg_state[6];
+
 } LegParam;
 
 // 腿部状态向量（LQR控制用）

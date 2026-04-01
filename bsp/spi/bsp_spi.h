@@ -34,7 +34,7 @@ typedef struct
  * @param conf 传入spi配置
  * @return SPIInstance* 返回一个spi实例指针,之后通过该指针操作spi外设
  */
-SPIInstance *SPIRegister(SPI_Init_Config_s *conf);
+SPIInstance *spi_register(SPI_Init_Config_s *conf);
 
 /**
  * @brief 通过spi向对应从机发送数据
@@ -43,7 +43,7 @@ SPIInstance *SPIRegister(SPI_Init_Config_s *conf);
  * @param ptr_data 要发送的数据
  * @param len 待发送的数据长度
  */
-void SPITransmit(SPIInstance *spi_ins, uint8_t *ptr_data, uint8_t len);
+void spi_transmit(SPIInstance *spi_ins, uint8_t *ptr_data, uint8_t len);
 
 /**
  * @brief 通过spi从从机获取数据 * 
@@ -51,7 +51,7 @@ void SPITransmit(SPIInstance *spi_ins, uint8_t *ptr_data, uint8_t len);
  * @param ptr_data 接受数据buffer的首地址
  * @param len 待接收的长度
  */
-void SPIRecv(SPIInstance *spi_ins, uint8_t *ptr_data, uint8_t len);
+void spi_receive(SPIInstance *spi_ins, uint8_t *ptr_data, uint8_t len);
 
 /**
  * @brief 通过spi利用移位寄存器同时收发数据
@@ -61,4 +61,4 @@ void SPIRecv(SPIInstance *spi_ins, uint8_t *ptr_data, uint8_t len);
  * @param ptr_data_tx 发送数据地址
  * @param len 接收&发送的长度
  */
-void SPITransRecv(SPIInstance *spi_ins, uint8_t *ptr_data_rx, uint8_t *ptr_data_tx, uint8_t len);
+void spi_transmit_receive(SPIInstance *spi_ins, uint8_t *ptr_data_rx, uint8_t *ptr_data_tx, uint8_t len);

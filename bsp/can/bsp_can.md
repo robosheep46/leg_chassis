@@ -30,7 +30,7 @@ typedef struct _
     CAN_HandleTypeDef *can_handle; // can句柄
     CAN_TxHeaderTypeDef txconf;    // CAN报文发送配置
     uint32_t tx_id;                // 发送id
-    uint8_t tx_buff[8];            // 发送缓存,发送消息长度可以通过CANSetDLC()设定,最大为8
+    uint8_t tx_buff[8];            // 发送缓存,发送消息长度可以通过can_set_data_length()设定,最大为8
     uint8_t rx_buff[8];            // 接收缓存,最大消息长度为8
     uint32_t rx_id;                // 接收id
     uint8_t rx_len;                // 接收长度,可能为0-8
@@ -65,12 +65,12 @@ typedef void (*can_callback)(can_instance*);
 ## 外部接口
 
 ```c
-void CANRegister(can_instance* instance, can_instance_config config);
-void CANSetDLC(CANInstance *_instance, uint8_t length); // 设置发送帧的数据长度
-uint8_t CANTransmit(can_instance* _instance, uint8_t timeout);
+void can_register(can_instance* instance, can_instance_config config);
+void can_set_data_length(CANInstance *_instance, uint8_t length); // 设置发送帧的数据长度
+uint8_t can_transmit(can_instance* _instance, uint8_t timeout);
 ```
 
-`CANRegister`是用于初始化CAN实例的接口，module层的模块对象（也应当为一个结构体）内要包含一个`usart_instance`。调用时传入实例指针，以及用于初始化的config。`CANRegister`应当在module的初始化函数内被调用，推荐config采用以下的方式定义，更加直观明了：
+`can_register`是用于初始化CAN实例的接口，module层的模块对象（也应当为一个结构体）内要包含一个`usart_instance`。调用时传入实例指针，以及用于初始化的config。`can_register`应当在module的初始化函数内被调用，推荐config采用以下的方式定义，更加直观明了：
 
 ```c
 can_instance_config config={.can_handle=&hfdcan1,
@@ -79,7 +79,7 @@ can_instance_config config={.can_handle=&hfdcan1,
 							can_module_callback=MotorCallback}
 ```
 
-`CANTransmit()`是通过模块通过其拥有的CAN实例发送数据的接口，调用时传入对应的instance。在发送之前，应当给instance内的`send_buff`赋值。
+`can_transmit()`是通过模块通过其拥有的CAN实例发送数据的接口，调用时传入对应的instance。在发送之前，应当给instance内的`send_buff`赋值。
 
 ## 私有函数和变量
 
@@ -92,23 +92,23 @@ static can_instance *instance[MX_REGISTER_DEVICE_CNT]={NULL};
 这是bsp层管理所有CAN实例的入口。
 
 ```c
-static void CANServiceInit()
+static void can_service_init()
 static void CANAddFilter(can_instance *_instance)
-static void CANFIFOxCallback(CAN_HandleTypeDef *_hfdcan, uint32_t fifox)
+static void can_callback(CAN_HandleTypeDef *_hfdcan, uint32_t fifox)
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hfdcan)
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hfdcan)
 ```
 
-- `CANServiceInit()`会被`CANRegister()`调用，对CAN外设进行硬件初始化并开启接收中断和消息提醒。
+- `can_service_init()`会被`can_register()`调用，对CAN外设进行硬件初始化并开启接收中断和消息提醒。
 
-- `CANAddFilter()`在每次使用`CANRegister()`的时候被调用，用于给当前注册的实例添加过滤器规则并设定处理对应`rx_id`的接收FIFO。过滤器的作用是减小CAN收发器的压力，只接收符合过滤器规则的报文（否则不会产生接收中断）。
+- `CANAddFilter()`在每次使用`can_register()`的时候被调用，用于给当前注册的实例添加过滤器规则并设定处理对应`rx_id`的接收FIFO。过滤器的作用是减小CAN收发器的压力，只接收符合过滤器规则的报文（否则不会产生接收中断）。
 
-- `HAL_CAN_RxFifo0MsgPendingCallback()`和`HAL_CAN_RxFifo1MsgPendingCallback()`都是对HAL的CAN回调函数的重定义（原本的callback是`__week`修饰的弱定义），当发生FIFO0或FIFO1有新消息到达的时候，对应的callback会被调用。`CANFIFOxCallback()`随后被前两者调用，并根据接收id和硬件中断来源（哪一个CAN硬件，CAN1还是CAN2）调用对应的instance的回调函数进行协议解析。
+- `HAL_CAN_RxFifo0MsgPendingCallback()`和`HAL_CAN_RxFifo1MsgPendingCallback()`都是对HAL的CAN回调函数的重定义（原本的callback是`__week`修饰的弱定义），当发生FIFO0或FIFO1有新消息到达的时候，对应的callback会被调用。`can_callback()`随后被前两者调用，并根据接收id和硬件中断来源（哪一个CAN硬件，CAN1还是CAN2）调用对应的instance的回调函数进行协议解析。
 
 - 当有一个模块注册了多个can实例时，通过`CANInstance.id`,使用强制类型转换将其转换成对应模块的实例指针，就可以对不同的模块实例进行回调处理了。
 
 ## 注意事项
 
-由于CAN总线自带发送检测，如果总线上没有挂载目标设备（接收id和发送报文相同的设备），那么CAN邮箱会被占满而无法发送。在`CANTransmit()`中会对CAN邮箱是否已满进行`while(1)`检查。当超出`timeout`之后函数会返回零，说明发送失败。
+由于CAN总线自带发送检测，如果总线上没有挂载目标设备（接收id和发送报文相同的设备），那么CAN邮箱会被占满而无法发送。在`can_transmit()`中会对CAN邮箱是否已满进行`while(1)`检查。当超出`timeout`之后函数会返回零，说明发送失败。
 
-由于卡在`while(1)`处不断检查邮箱是否空闲，调用`CANTransmit()`的任务可能无法按时挂起，导致任务定时不精确。建议在没有连接CAN进行调试时，按需注释掉有关CAN发送的代码部分，或设定一个较小的`timeout`值，防止对其他需要精确定时的任务产生影响。
+由于卡在`while(1)`处不断检查邮箱是否空闲，调用`can_transmit()`的任务可能无法按时挂起，导致任务定时不精确。建议在没有连接CAN进行调试时，按需注释掉有关CAN发送的代码部分，或设定一个较小的`timeout`值，防止对其他需要精确定时的任务产生影响。

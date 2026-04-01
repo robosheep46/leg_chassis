@@ -1,7 +1,7 @@
 #include "minipc_comm.h"
 #include "bsp_usart.h"
 #include <string.h>
-#include "bmi088.h"
+#include "ins_task.h"
 #include "cmsis_os2.h"
 #include "daemon.h"
 #include "crc_ref.h"
@@ -51,10 +51,10 @@ static void get_protocol_info_vision(uint8_t *rx_buf, Minipc_Recv_s *recv_data)
 }
 
 
-static void DecodeMinipcData()
+static void DecodeMinipcData(uint8_t *data, uint16_t len)
 {
     DaemonReload(minipc_daemon_instance); // 喂狗
-    get_protocol_info_vision(minipc_usart_instance->recv_buff,&minipc_recv_data);
+    get_protocol_info_vision(data,&minipc_recv_data);
 }
 
 
@@ -71,7 +71,7 @@ void Minipc_Comm_Task(void* argument)
     USARTInstance *instance = (USARTInstance *)argument;
     TickType_t last_wake_time = xTaskGetTickCount();
     const TickType_t frequency = pdMS_TO_TICKS(1);
-    static uint8_t send_buff[Minipc_Send_SIZE];
+    static uint8_t send_buff[MINIPC_SEND_SIDE];
     imu_data_t imu_data;
     Enemy_Color_e color;
 
@@ -88,7 +88,7 @@ void Minipc_Comm_Task(void* argument)
             minipc_send_data.Vision.detect_color = 1;
             // 只有成功接收到新数据才发送
             get_protocol_send_Minipc_data(&minipc_send_data, send_buff);
-            USARTSend(minipc_usart_instance, send_buff, Minipc_Send_SIZE, USART_TRANSFER_DMA);
+            usart_send(minipc_usart_instance, send_buff, MINIPC_SEND_SIDE, USART_TRANSFER_DMA);
         }
     }
 }
@@ -98,9 +98,9 @@ Minipc_Recv_s *minipcInit(UART_HandleTypeDef *_handle)
 {
     minipc_recv_data = (Minipc_Recv_s *)malloc(sizeof(Minipc_Recv_s));
     USART_Init_Config_s conf;
-    conf.recv_buff_size = Minipc_Send_SIZE;
+    conf.recv_buff_size = MINIPC_SEND_SIDE;
     conf.usart_handle = _handle;
-    minipc_usart_instance = USARTRegister(&conf);    
+    minipc_usart_instance = usart_register(&conf);    
 
     MinipcComm_TaskHandle = osThreadNew(Minipc_Comm_Task, 
                                             minipc_usart_instance, 
@@ -115,3 +115,4 @@ Minipc_Recv_s *minipcInit(UART_HandleTypeDef *_handle)
     minipc_daemon_instance->callback = MinipcLostCallback;
     return minipc_recv_data;
 }
+

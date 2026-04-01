@@ -4,7 +4,7 @@
 #include "robot_def.h"
 //module
 
-#include "bmi088.h"
+#include "ins_task.h"
 #include "general_def.h"
 #include "controller.h"
 //bsp
@@ -27,7 +27,7 @@ static Chassis_Upload_Data_s chassis_feedback_data;     // 底盘回传的反馈
 
 static LKMotorInstance *r_driven, *l_driven, *driven[2]; // 左右驱动轮
 static DMMotorInstance *lf, *lb, *rf, *rb,*joint[4]; // 双马达
-static imu_data_t Chassis_IMU_data;
+static attitude_t *chassis_imu_data;
 // static Robot_Status_e chassis_status;
 
 static ChassisParam chassis; 
@@ -64,7 +64,7 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
     chassis_feedback_queue = chassis_queue->chassis_feedback_queue;
     
 
-    imu_queue = BMI088Register();
+    chassis_imu_data = imu_init();
 
 
 /***************************MOTOR_INIT******************************/
@@ -132,8 +132,8 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
 // /*******************************LEG_PID_INIT******************************* */
     // 腿长控制
     PID_Init_Config_s l_leg_length_pid_conf = {
-        .Kp = 500,
-        .Kd = 50,
+        .Kp = 5,
+        .Kd = 0,
         .Ki = 0,
         .MaxOut = 40,
         .DeadBand = 0.0001f,
@@ -143,8 +143,8 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
     PIDInit(&leg_len_pid_l, &l_leg_length_pid_conf);
 
     PID_Init_Config_s r_leg_length_pid_conf = {
-        .Kp = 500,
-        .Kd = 50,
+        .Kp = 5,
+        .Kd = 0,
         .Ki = 0,
         .MaxOut = 40,
         .DeadBand = 0.0001f,
@@ -250,41 +250,41 @@ static void ResetChassis()
 * @note LK9025电机逆时针旋转为正
 * 
 */
-static void WatchAll()
+static void set_leg_data()
 {
-    chassis.yaw = Chassis_IMU_data.yaw_total_angle * DEGREE_2_RAD;
+    chassis.yaw = chassis_imu_data->yaw_total_angle * DEGREE_2_RAD;
     // chassis.target_yaw = chassis.yaw + chassis_cmd_recv.offset_angle * DEGREE_2_RAD;
-    chassis.wz = Chassis_IMU_data.gyro[2];
-    chassis.roll = Chassis_IMU_data.roll * DEGREE_2_RAD;
-    chassis.roll_w = Chassis_IMU_data.gyro[1];
+    chassis.wz = chassis_imu_data->gyro[2];
+    chassis.roll = chassis_imu_data->roll * DEGREE_2_RAD;
+    chassis.roll_w = chassis_imu_data->gyro[1];
     
     // DM8009 电机的角度是逆时针为正 ,这里顺时针转是增加角度
     // LK9025 电机的角度是逆时针为正 ，右轮电机速度为正。
     //小腿 phi1 180  大腿 phi4 0 
-    l_side.phi1 = ( 180  - lb->measure.real_total_angle)*PI/180 ;
-    l_side.phi1_angle = 180 - lb->measure.real_total_angle;
-    l_side.phi1_w =  -lb->measure.velocity;
-    l_side.phi4 = (  0 -  lf->measure.real_total_angle)*PI/180 ;
-    l_side.phi4_angle = 0 -lf->measure.real_total_angle;
-    l_side.phi4_w =   -lf->measure.velocity;
+    l_side.phi1 = ( 180  + lf->measure.real_total_angle  -9)*PI/180 ;
+    l_side.phi1_angle = 180 + lf->measure.real_total_angle -9;
+    l_side.phi1_w =  lf->measure.velocity;
+    l_side.phi4 = (  0 +  lb->measure.real_total_angle +8 )*PI/180 ;
+    l_side.phi4_angle = 0 + lb->measure.real_total_angle +8;
+    l_side.phi4_w =   lb->measure.velocity;
 
-    l_side.w_ecd = l_driven->measure.speed_rads/6;
-    l_side.pitch   = - Chassis_IMU_data.pitch * DEGREE_2_RAD;
-    l_side.pitch_w = - Chassis_IMU_data.gyro[0];
+    l_side.w_ecd = l_driven->measure.speed_rads;
+    l_side.pitch   =  chassis_imu_data->pitch * DEGREE_2_RAD;
+    l_side.pitch_w =  chassis_imu_data->gyro[0];
 
-    //小腿phi4 0  大腿phi1 180
-    r_side.phi1 = (180 - rf->measure.real_total_angle) *PI/180;
-    r_side.phi1_angle = (180 - rf->measure.real_total_angle);
-    r_side.phi1_w =  -rf->measure.velocity;
-    r_side.phi4 = ( 0 - rb->measure.real_total_angle) *PI/180;
-    r_side.phi4_angle = ( 0  - rb->measure.real_total_angle);
-    r_side.phi4_w =   - rb->measure.velocity;
+    //小腿phi 0  大腿phi1 180
+    r_side.phi1 = (180 + rb->measure.real_total_angle  -10) *PI/180;
+    r_side.phi1_angle = (180 + rb->measure.real_total_angle  -10);
+    r_side.phi1_w =  rb->measure.velocity;
+    r_side.phi4 = ( 0 + rf->measure.real_total_angle + 9) *PI/180;
+    r_side.phi4_angle = ( 0  + rf->measure.real_total_angle +9);
+    r_side.phi4_w =   rf->measure.velocity;
 
-    // LK9025电机顺时针为负
-    r_side.w_ecd = r_driven->measure.speed_rads/6;
+    // LK9025电机顺时针为负 +
+    r_side.w_ecd = r_driven->measure.speed_rads;
     
-    r_side.pitch   = (Chassis_IMU_data.pitch ) * DEGREE_2_RAD;
-    r_side.pitch_w = Chassis_IMU_data.gyro[0];
+    r_side.pitch   = -(chassis_imu_data->pitch ) * DEGREE_2_RAD;
+    r_side.pitch_w = -chassis_imu_data->gyro[0];
 }
 
 
@@ -306,7 +306,7 @@ static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
  
 /************************************** leg Control **************************************/
 
-static void LegControl() /* 腿长控制和Roll补偿 */
+static void leg_control() /* 腿长控制和Roll补偿 */
 {
     PIDCalculate(&roll_compensate_pid, chassis.roll, 0);
     l_side.target_len += roll_compensate_pid.Output;
@@ -315,26 +315,22 @@ static void LegControl() /* 腿长控制和Roll补偿 */
     static float gravity_ff = 52.34;
     static float roll_extra_comp_p = 400;
     float roll_comp = roll_extra_comp_p * chassis.roll;
-    l_side.F_leg =  - gravity_ff + PIDCalculate(&leg_len_pid_l, l_side.height, chassis_cmd_recv.l_target_len);
-    r_side.F_leg =  - gravity_ff + PIDCalculate(&leg_len_pid_r, r_side.height, chassis_cmd_recv.r_target_len);
+    l_side.F_leg = 50 + PIDCalculate(&leg_len_pid_l, l_side.height, chassis_cmd_recv.l_target_len);
+    r_side.F_leg = 50 + PIDCalculate(&leg_len_pid_r, r_side.height, chassis_cmd_recv.r_target_len);
 }
 
 
-static void WorkingStateSet()
+static void set_working_state()
 {
 
     if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE) 
     {
         chassis.yaw = chassis_cmd_recv.offset_angle;
+        chassis.target_v = chassis_cmd_recv.vx;
+
         // 目标速度置0
-        chassis.target_v = 0;
+        // chassis.target_v = 0;
         chassis.dist = chassis.target_dist = 0;
-        r_side.T_wheel = 0;
-        r_side.T_front = 0;
-        r_side.T_back = 0;
-        l_side.T_front = 0;
-        l_side.T_back = 0;
-        l_side.T_wheel = 0;
         // return;
     }
     else if(chassis_cmd_recv.chassis_mode == CHASSIS_NO_FOLLOW)
@@ -356,61 +352,67 @@ void ChassisTask(void *argument)
     for(;;)
     {
         xQueueReceive(chassis_recv_queue, &chassis_cmd_recv, 0);
-        xQueueReceive(imu_queue, &Chassis_IMU_data, 0);
+        // xQueueReceive(imu_queue, &Chassis_IMU_data, 0);
         // // DMMotorEnable(rf);
         // // DMMotorEnable(rb);
         // // static uint32_t safety_counter = 0;
             
-        del_t = DWT_GetDeltaT(&balance_dwt_cnt);
+        del_t = dwt_get_delta_time(&balance_dwt_cnt);
             
         // 1. 设置工作状态
-        WorkingStateSet();
+        set_working_state();
         // 2. 观测数据
-        WatchAll();
+        set_leg_data();
 
         // 3. 运动学计算
-        TranLeg(&l_side, &chassis);
-        TranLeg(&r_side, &chassis);
-        CalcThetaw(&l_side,&chassis);
-        CalcThetaw(&r_side,&chassis);
+        phi_transform_theta(&l_side, &chassis);
+     
+        phi_transform_theta(&r_side, &chassis);
+        calculate_leg_theta_w(&l_side,&chassis);
+        calculate_leg_theta_w(&r_side,&chassis);
 
         // 4. 通过卡尔曼滤波估计机体速度
-        SpeedObserver(&l_side, &r_side, &chassis, &Chassis_IMU_data, del_t);
+        observe_speed(&l_side, &r_side, &chassis, &chassis_imu_data, del_t);
         
         // 5. lqr 算 T_Hip
-        CalLeftT_Hip(&l_side,  &chassis);
-        CalRightT_Hip(&r_side, &chassis);
-        CalLeftT_Wheel(&l_side, &chassis);
-        CalRightT_Wheel(&r_side, &chassis);
+        set_left_leg_six_states(&l_side, &chassis)  ;
+        set_right_leg_six_states(&r_side, &chassis) ;
+
+        calculate_wheel_torgue(&l_side,  &chassis);
+        calculate_wheel_torgue(&r_side, &chassis);
+        
+        leg_control();
+
+
+        calculate_leg_torgue(&l_side);
+        calculate_leg_torgue(&r_side);
 
         // SynthesizeMotion();
 
-        // LegControl();
 
-        // // 6. VMC 算 T_front、T_back
-        VMC(&l_side);
-        VMC(&r_side);
+        // // 6. calculate_leg_torgue 算 T_front、T_back
+        // calculate_leg_torgue(&l_side);
+        // calculate_leg_torgue(&r_side);
 
         // SynthesizeMotion();
         // 7. 算支持力
-        // SupportForceSolve(&l_side, &Chassis_IMU_data);
-        // SupportForceSolve(&r_side, &Chassis_IMU_data);
+        // calculate_support_force(&l_side, &Chassis_IMU_data);
+        // calculate_support_force(&r_side, &Chassis_IMU_data);
 
 
 
         if(chassis_cmd_recv.chassis_mode == CHASSIS_NO_FOLLOW)
         {
-            r_side.real_T_wheel = r_side.T_wheel;
-            l_side.real_T_wheel = l_side.T_wheel;
-            LKMotorSetRef(l_driven,l_side.real_T_wheel*124.12);
-            LKMotorSetRef(r_driven,  r_side.real_T_wheel*124.12);
-            // DMMotorSetFFTorque(lb, 0) ;
-            // DMMotorSetFFTorque(lf, 0) ;
-            // DMMotorSetFFTorque(rf, 0 ) ; 
+            LKMotorSetRef(l_driven,l_side.T_wheel*124.12);
+            LKMotorSetRef(r_driven,r_side.T_wheel*124.12);
+            // LKMotorSetRef(r_driven, 0)   ;
+            // LKMotorSetRef(l_driven, 0)   ;
+            // DMMotorSetFFTorque(lb, 0)  ;
+            // DMMotorSetFFTorque(lf, 0)  ;
+            // DMMotorSetFFTorque(rf, 0)  ; 
             // DMMotorSetFFTorque(rb, 0)  ;
             DMMotorSetFFTorque(lb, l_side.T_back )  ;
-            DMMotorSetFFTorque(lf, l_side.T_front )  ;
-
+            DMMotorSetFFTorque(lf, l_side.T_front ) ;
             DMMotorSetFFTorque(rf, r_side.T_back )  ; 
             DMMotorSetFFTorque(rb, r_side.T_front)  ;
         }

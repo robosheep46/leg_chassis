@@ -16,6 +16,7 @@ typedef struct daemon_ins
 {
     uint16_t reload_count;     // 重载值
     offline_callback callback; // 异常处理函数,当模块发生异常时会被调用
+    offline_callback other_modules_error_callback; // 异常处理函数,当模块发生异常时会被调用
 
     uint16_t temp_count; // 当前值,减为零说明模块离线或异常
     void *owner_id;      // daemon实例的地址,初始化的时候填入
@@ -26,7 +27,8 @@ typedef struct
 {
     uint16_t reload_count;     // 实际上这是app唯一需要设置的值?
     uint16_t init_count;       // 上线等待时间,有些模块需要收到主控的指令才会反馈报文,或pc等需要开机时间
-    offline_callback callback; // 异常处理函数,当模块发生异常时会被调用
+    offline_callback owner_callback; // 异常处理函数,当模块发生异常时会被调用
+    offline_callback other_modules_error_callback; // 异常处理函数,当模块发生异常时会被调用
 
     void *owner_id;            // id取拥有daemon的实例的地址,如DJIMotorInstance*,cast成void*类型
 } Daemon_Init_Config_s;

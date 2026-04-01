@@ -28,7 +28,9 @@ DaemonInstance *DaemonRegister(Daemon_Init_Config_s *config)
 
     instance->owner_id = config->owner_id;
     instance->reload_count = config->reload_count == 0 ? 100 : config->reload_count; // 默认值为100
-    instance->callback = config->callback;
+    instance->callback = config->owner_callback;
+    instance->other_modules_error_callback = config->other_modules_error_callback;
+
     instance->temp_count = config->init_count == 0 ? 100 : config->init_count; // 默认值为100,初始计数
 
     instance->temp_count = config->reload_count;
@@ -50,6 +52,9 @@ void DaemonTask(void *argument)
     {
         DaemonInstance *dins;
         uint8_t all_normal = 1;
+        uint8_t timed_out_indices[DAEMON_MX_CNT] = {0};
+        uint8_t timeout_count = 0;
+
         for (size_t i = 0; i < idx; i++)
         {
             dins = daemon_instances[i];
@@ -59,39 +64,41 @@ void DaemonTask(void *argument)
                 // 如果计数器还有值,说明上一次喂狗后还没有超时,则计数器减一
                 dins->temp_count--;
             }
-            else
-            {
-                // 如果有一个daemon超时，标记为不正常
-                all_normal = 0;
-                
-                if (dins->callback) // 等于零说明超时了,调用回调函数(如果有的话)
-                {
-                    dins->callback(dins->owner_id); // module内可以将owner_id强制类型转换成自身类型从而调用特定module的offline callback
-                    BuzzerSendWorkModeEvent(buzzer_instance, WARNING1_MODE);
-                }
-            }
         }
-        
-        // 检查是否所有daemon都正常
-        if (all_normal && idx > 0) // idx>=0确保至少有一个daemon实例
-        {
-            all_normal_count++;
-        
-            if (all_normal_count >= 200)
-            {
-                if(normal_flag == 0)
-                {
-                    // 发送消息队列
-                    BuzzerSendWorkModeEvent(buzzer_instance, START_SONG_MODE);
-                }
 
-                normal_flag = 1;
+
+        for (size_t i = 0; i < idx; i++)
+        {
+            dins = daemon_instances[i];
+            
+            if (dins->temp_count <= 0)
+            {
+                // 自己超时，调用callback（即自己的错误处理回调）
+                if (dins->callback) 
+                {
+                    dins->callback(dins->owner_id); // 自己模块超时处理
+                }
             }
         }
-        else
+
+
+        for (size_t i = 0; i < idx; i++)
         {
-            normal_flag = 0;
-            all_normal_count = 0;
+            dins = daemon_instances[i];
+            
+            // 只有注册了other_modules_error_callback的模块才会受到影响
+            if (dins->other_modules_error_callback != NULL)
+            {
+                // 检查是否有其他模块超时
+                for (size_t j = 0; j < idx; j++)
+                {
+                    if (i != j && daemon_instances[j]->temp_count <= 0&&daemon_instances[j]->other_modules_error_callback!=NULL)
+                    {
+                        // 第j个模块超时了，通知第i个模块
+                        dins->other_modules_error_callback(daemon_instances[i]->owner_id);
+                    }
+                }
+            }
         }
         osDelay(11);
     }

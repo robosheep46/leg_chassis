@@ -26,6 +26,6 @@ typedef struct
  * @param config 初始化配置
  * @return TIMInstance*
  */
-TIMInstance *TIMRegister(TIM_Init_Config_s *TIM_config);
+TIMInstance *tim_register(TIM_Init_Config_s *TIM_config);
 
 #endif // BSP_TIM_H

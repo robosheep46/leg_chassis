@@ -93,7 +93,7 @@ referee_info_t *RefereeInit(UART_HandleTypeDef *referee_usart_handle)
 	USART_Init_Config_s conf;
 	conf.usart_handle = referee_usart_handle;
 	conf.recv_buff_size = RE_RX_BUFFER_SIZE; // mx 255(u8)
-	referee_usart_instance = USARTRegister(&conf);
+	referee_usart_instance = usart_register(&conf);
 
 	// Daemon_Init_Config_s daemon_conf = {
 	// 	.callback = RefereeLostCallback,
@@ -115,6 +115,6 @@ USARTInstance * return_referee_usart_instance()
  */
 void RefereeSend(uint8_t *send, uint16_t tx_len)
 {
-	USARTSend(referee_usart_instance, send, tx_len, USART_TRANSFER_DMA);
+	usart_send(referee_usart_instance, send, tx_len, USART_TRANSFER_DMA);
 	osDelay(115);
 }

@@ -9,6 +9,7 @@
  * @copyrightCopyright (c) 2022 HNU YueLu EC all rights reserved
  */
 #include "controller.h"
+#include "bsp_dwt.h"
 #include "memory.h"
 
 /* ----------------------------下面是pid优化环节的实现---------------------------- */
@@ -131,7 +132,7 @@ void PIDInit(PIDInstance *pid, PID_Init_Config_s *config)
     // utilize the quality of struct that its memeory is continuous
     memcpy(pid, config, sizeof(PID_Init_Config_s));
     // set rest of memory to 0
-    DWT_GetDeltaT(&pid->DWT_CNT);
+    dwt_get_delta_time(&pid->DWT_CNT);
 }
 
 /**
@@ -147,7 +148,7 @@ float PIDCalculate(PIDInstance *pid, float measure, float ref)
     if (pid->Improve & PID_ErrorHandle)
         f_PID_ErrorHandle(pid);
 
-    pid->dt = DWT_GetDeltaT(&pid->DWT_CNT); // 获取两次pid计算的时间间隔,用于积分和微分
+    pid->dt = dwt_get_delta_time(&pid->DWT_CNT); // 获取两次pid计算的时间间隔,用于积分和微分
 
     // 保存上次的测量值和误差,计算当前error
     pid->Measure = measure;

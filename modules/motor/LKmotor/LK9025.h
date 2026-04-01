@@ -6,6 +6,7 @@
 #include "controller.h"
 #include "motor_def.h"
 #include "daemon.h"
+#include <stdint.h>
 
 #define LK_MOTOR_MX_CNT 4 // 最多允许4个LK电机使用多电机指令,挂载在一条总线上
 
@@ -49,6 +50,7 @@ typedef struct
 
     DaemonInstance *daemon;
     uint8_t sender_group;
+    uint8_t other_error_flag;
 } LKMotorInstance;
 
 /**

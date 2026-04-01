@@ -182,7 +182,7 @@ static void DecodeDJIMotor(CANInstance *_instance)
     //20ms不起作用就进丢失回调即重启程序
     // DaemonReload(motor->daemon);
     //计算两次进入同一个函数的时间间隔
-    motor->dt = DWT_GetDeltaT(&motor->feed_cnt);
+    motor->dt = dwt_get_delta_time(&motor->feed_cnt);
     /******** 解析数据电机的反馈报文详见djmotor.md ********/
     measure->last_ecd = measure->ecd;
     measure->ecd = ((uint16_t)rxbuff[0]) << 8 | rxbuff[1];
@@ -253,7 +253,7 @@ DJIMotorInstance *DJIMotorInit(Motor_Init_Config_s *config)
     config->can_init_config.can_module_callback = DecodeDJIMotor; 
     config->can_init_config.id = instance;
     // 注册电机到CAN总线                        
-    instance->motor_can_instance = CANRegister(&config->can_init_config);
+    instance->motor_can_instance = can_register(&config->can_init_config);
 
     // // 注册守护线程，未收到数据，调用DJIMotorLostCallback
     // Daemon_Init_Config_s daemon_config = {
@@ -387,7 +387,7 @@ void DJIMotorControl()
     {
         if (sender_enable_flag[i])
         {
-            CANTransmit(&sender_assignment[i], 1);
+            can_transmit(&sender_assignment[i], 1);
         }
     }
 }

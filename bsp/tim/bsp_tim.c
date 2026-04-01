@@ -23,7 +23,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         }
     }
 }
-TIMInstance *TIMRegister(TIM_Init_Config_s *TIM_config)
+TIMInstance *tim_register(TIM_Init_Config_s *TIM_config)
 {
     TIMInstance *tim = (TIMInstance *)malloc(sizeof(TIMInstance));
     memset(tim, 0, sizeof(TIMInstance));

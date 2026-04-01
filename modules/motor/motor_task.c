@@ -1,4 +1,5 @@
 #include "motor_task.h"
+#include "bsp_dwt.h"
 #include "dji_motor.h"
 #include "cmsis_os.h"
 #include "LK9025.h"
@@ -23,9 +24,9 @@ __attribute__((noreturn)) void StartMOTORTASK(void *argument)
     static float motor_start;
     for (;;)
     {
-        motor_start = DWT_GetTimeline_ms();
+        motor_start = dwt_get_time_ms();
         MotorControlTask();
-        motor_dt = DWT_GetTimeline_ms() - motor_start;
+        motor_dt = dwt_get_time_ms() - motor_start;
         // if (motor_dt > 1)
         //     ;
         osDelay(2);
