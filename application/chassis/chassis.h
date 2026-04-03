@@ -46,14 +46,11 @@
 // 五连杆腿部参数
 typedef struct {
     //五（四）连杆
-    //  各个点坐标
-    float YD, YB, XD, XB, XC, YC;
     // BD长度的平方
-    float lBD_2;
     // 计算phi2用的中间量
-    float A0, B0, C0 ;
     float phi1, phi2, phi3, phi4, phi0;
-    float phi1_angle, phi2_angle, phi3_angle, phi4_angle;
+    float last_phi0;
+    float phi1_angle, phi4_angle;
 
     float phi1_w, phi2_w, phi3_w, phi4_w, phi0_w;
 
@@ -85,6 +82,7 @@ typedef struct {
     float wheel_state[6];
     float leg_state[6];
 
+    uint8_t first_flag;
 } LegParam;
 
 // 腿部状态向量（LQR控制用）

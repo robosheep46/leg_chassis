@@ -6,5 +6,6 @@
 #include "ins_task.h"
 
 void observe_speed(LegParam *lp, LegParam *rp, ChassisParam *cp, attitude_t *imu, float delta_t);
+void observe_speed_init(ChassisParam *cp);
 
 #endif

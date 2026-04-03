@@ -7,38 +7,6 @@
 #include <math.h>
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // 1. 计算腿长、腿与地面角度
 void phi_transform_theta(LegParam * leg,ChassisParam *chassis)
 {
