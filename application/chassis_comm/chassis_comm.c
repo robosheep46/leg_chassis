@@ -66,8 +66,8 @@ void ChassisCMDInit(RobotCtrlQueues_t *control_queue)
     buzzer = BuzzerRegister(buzzer_queue);
     CreateDaemon(buzzer);
 
-    chassis_cmd_send.l_target_len = 0.16;
-    chassis_cmd_send.r_target_len = 0.16;
+    chassis_cmd_send.l_target_len = 0.23;
+    chassis_cmd_send.r_target_len = 0.22;
     #if defined (CHASSIS_BOARD) || defined (CHASSIS_BOARD_CONTROL_CHASSIS)
     cmd_control_chassis_queue = control_queue->control_chassis_queue;
     #endif
@@ -102,6 +102,34 @@ static void BasicSet()
         // chassis_cmd_send.turn_position -=  0.000002f*rc_data->rc.rocker_left_y;
         // chassis_cmd_send.change_length -=  0.000002f*rc_data->rc.rocker_right_y;
         chassis_cmd_send.vx = 0.002f * (float)rc_data[TEMP].rc.rocker_left_y;
+        chassis_cmd_send.l_target_len -= 0.000002f*(float)rc_data[TEMP].rc.rocker_right_y;
+        chassis_cmd_send.r_target_len -= 0.000002f*(float)rc_data[TEMP].rc.rocker_right_y;
+        if(chassis_cmd_send.l_target_len>= 0.3)
+        {
+            chassis_cmd_send.l_target_len =0.3;
+        }
+        else if(chassis_cmd_send.l_target_len<= 0.18)
+        {
+            chassis_cmd_send.l_target_len =0.18;
+        }
+        else
+        {
+            chassis_cmd_send.l_target_len = chassis_cmd_send.l_target_len;
+        }
+        
+        if(chassis_cmd_send.r_target_len>= 0.3)
+        {
+            chassis_cmd_send.r_target_len =0.3;
+        }
+        else if(chassis_cmd_send.r_target_len<= 0.21)
+        {
+            chassis_cmd_send.r_target_len =0.21;
+        }
+        else
+        {
+            chassis_cmd_send.r_target_len = chassis_cmd_send.r_target_len;
+        }
+        chassis_cmd_send.offset_angle -= 0.000002f * (float)rc_data[TEMP].rc.rocker_right_x;
         // chassis_cmd_send.l_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_right_x;
         // chassis_cmd_send.r_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_right_x;
         // chassis_cmd_send.l_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_left_y;
@@ -128,8 +156,7 @@ static void BasicSet()
         else
         {
             chassis_cmd_send.vx = 0.003f * (float)rc_data[TEMP].rc.rocker_left_x;
-            chassis_cmd_send.l_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_right_x;
-            chassis_cmd_send.r_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_right_x;
+
         }
     }
 }

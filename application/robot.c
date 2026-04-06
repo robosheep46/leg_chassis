@@ -24,7 +24,7 @@ void RobotInit()
     ChassisQueues_t   chassis_queues;
     cmd_queues.control_chassis_queue = xQueueCreate(10, sizeof(Chassis_Ctrl_Cmd_s));
     chassis_queues.chassis_recv_queue = cmd_queues.control_chassis_queue;
-    ChassisInit(&chassis_queues);              
+    ChassisInit(&chassis_queues);
     ChassisCMDInit(&cmd_queues);
     MotorTaskInit();
     DMMotorControlInit();

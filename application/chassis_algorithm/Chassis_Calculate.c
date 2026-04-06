@@ -77,14 +77,14 @@ void set_left_leg_six_states(LegParam *leg, ChassisParam *chassis)
     // leg->leg_state[5] =  0                   ;        // 机体俯仰角速度偏差
     // if(leg->fly_flag == 0)
     {
-        leg->wheel_state[0] =  leg->theta - 0                   ;        // 腿部角度偏差
+        leg->wheel_state[0] =  leg->theta - (-0.18)                   ;        // 腿部角度偏差
         leg->wheel_state[1] =  leg->theta_w - 0                 ;        // 腿部角速度偏差
         leg->wheel_state[2] =  -chassis->dist - 0               ;        // 机体位移偏差
         leg->wheel_state[3] =  -chassis->vel + chassis->target_v;   // 机体速度偏差
         leg->wheel_state[4] =  leg->pitch                       ;        // 机体俯仰角偏差
         leg->wheel_state[5] =  leg->pitch_w                     ;        // 机体俯仰角速度偏差
     
-        leg->leg_state[0]   =  leg->theta - 0                   ;        // 腿部角度偏差
+        leg->leg_state[0]   =  leg->theta - -(0.18)                   ;        // 腿部角度偏差
         leg->leg_state[1]   =  leg->theta_w - 0                 ;        // 腿部角速度偏差
         leg->leg_state[2]   =  - chassis->dist - 0                ;        // 机体位移偏差
         leg->leg_state[3]   =  - chassis->vel + chassis->target_v ;        // 机体速度偏差
@@ -128,14 +128,14 @@ void set_right_leg_six_states(LegParam *leg, ChassisParam *chassis)
 
     // if(leg->fly_flag == 0)
     {
-        leg->wheel_state[0] =  leg->theta - 0                   ;        // 腿部角度偏差
+        leg->wheel_state[0] =  leg->theta - 0.18                   ;        // 腿部角度偏差
         leg->wheel_state[1] =  leg->theta_w - 0                 ;        // 腿部角速度偏差
         leg->wheel_state[2] =  chassis->dist - 0                ;        // 机体位移偏差
         leg->wheel_state[3] =  chassis->vel - chassis->target_v ;        // 机体速度偏差
         leg->wheel_state[4] =  leg->pitch                       ;        // 机体俯仰角偏差
         leg->wheel_state[5] =  leg->pitch_w                     ;        // 机体俯仰角速度偏差
 
-        leg->leg_state[0]   =  leg->theta - 0                   ;        // 腿部角度偏差
+        leg->leg_state[0]   =  leg->theta - 0.18;        // 腿部角度偏差
         leg->leg_state[1]   =  leg->theta_w - 0                 ;        // 腿部角速度偏差
         leg->leg_state[2]   =  chassis->dist - 0                ;        // 机体位移偏差
         leg->leg_state[3]   =  chassis->vel - chassis->target_v ;        // 机体速度偏差

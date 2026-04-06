@@ -43,6 +43,10 @@ static PIDInstance leg_len_pid_r;
 static PIDInstance steer_p_pid;
 static PIDInstance steer_v_pid;
 
+static PIDInstance adaptive_pid_l;
+static PIDInstance adaptive_pid_r;
+
+
 static PIDInstance roll_compensate_pid; 
 static PIDInstance anti_crash_pid;
 static TaskHandle_t chassis_task_handle = NULL;
@@ -132,8 +136,8 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
 // /*******************************LEG_PID_INIT******************************* */
     // 腿长控制
     PID_Init_Config_s l_leg_length_pid_conf = {
-        .Kp = 200,
-        .Kd = 0,
+        .Kp = 700,
+        .Kd = 40,
         .Ki = 0,
         .MaxOut = 40,
         .DeadBand = 0.0001f,
@@ -143,8 +147,8 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
     PIDInit(&leg_len_pid_l, &l_leg_length_pid_conf);
 
     PID_Init_Config_s r_leg_length_pid_conf = {
-        .Kp = 200,
-        .Kd = 0,
+        .Kp = 700,
+        .Kd = 40,
         .Ki = 0,
         .MaxOut = 40,
         .DeadBand = 0.0001f,
@@ -202,6 +206,19 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .Derivative_LPF_RC = 0.01,
     };
     PIDInit(&anti_crash_pid, &anti_crash_pid_conf);
+
+    PID_Init_Config_s adaptive_pid_conf = {
+        .Kp = 0,
+        .Kd = 0,
+        .Ki = 0.3,
+        .MaxOut = 40,
+        .IntegralLimit = 20,
+        .Improve = PID_DerivativeFilter | PID_Derivative_On_Measurement | PID_Integral_Limit,
+        .DeadBand = 0.0001f,
+    };
+    PIDInit(&adaptive_pid_l, &adaptive_pid_conf);
+    PIDInit(&adaptive_pid_r, &adaptive_pid_conf);
+
 
     chassis.target_v = 0;
     r_side.real_T_wheel = 0;
@@ -277,8 +294,8 @@ static void set_leg_data()
     r_side.phi1 = (180 + rb->measure.real_total_angle  -23) *PI/180;
     r_side.phi1_angle = (180 + rb->measure.real_total_angle  -23);
     r_side.phi1_w =  rb->measure.velocity;
-    r_side.phi4 = ( 0 + rf->measure.real_total_angle + 10) *PI/180;
-    r_side.phi4_angle = ( 0  + rf->measure.real_total_angle +10);
+    r_side.phi4 = ( 0 + rf->measure.real_total_angle + 7.5) *PI/180;
+    r_side.phi4_angle = ( 0  + rf->measure.real_total_angle +7.5);
     r_side.phi4_w =   rf->measure.velocity;
 
     // LK9025电机顺时针为负 +
@@ -293,8 +310,20 @@ static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
 {
     float p_ref = PIDCalculate(&steer_p_pid, chassis.yaw, chassis.target_yaw);
     PIDCalculate(&steer_v_pid, chassis.wz, p_ref);
-    l_side.real_T_wheel = l_side.T_wheel - steer_v_pid.Output;
-    r_side.real_T_wheel = r_side.T_wheel - steer_v_pid.Output;
+
+    float vel_error_l = l_side.wheel_state[3];
+    float vel_error_r = r_side.wheel_state[3];
+    if(fabsf(l_side.real_T_wheel) < 1)
+    {
+        PIDCalculate(&adaptive_pid_l, vel_error_l, 0);
+    }
+    if(fabsf(r_side.real_T_wheel) < 1)
+    {
+        PIDCalculate(&adaptive_pid_r, vel_error_r, 0);
+    }
+
+    l_side.real_T_wheel = l_side.T_wheel - steer_v_pid.Output + adaptive_pid_l.Output;
+    r_side.real_T_wheel = r_side.T_wheel - steer_v_pid.Output + adaptive_pid_r.Output;
 
 
     // // 抗劈叉
@@ -306,27 +335,25 @@ static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
 }
  
 /************************************** leg Control **************************************/
-
 static void leg_control() /* 腿长控制和Roll补偿 */
 {
     PIDCalculate(&roll_compensate_pid, chassis.roll, 0);
     l_side.target_len += roll_compensate_pid.Output;
     r_side.target_len -= roll_compensate_pid.Output;
 
-    static float gravity_ff = 38.34;
+    static float gravity_ff = 5;
     static float roll_extra_comp_p = 400;
     float roll_comp = roll_extra_comp_p * chassis.roll;
 
 
 
-    l_side.F_leg = 5;// + PIDCalculate(&leg_len_pid_l, l_side.height, chassis_cmd_recv.l_target_len);
-    r_side.F_leg = 5 ;//+ PIDCalculate(&leg_len_pid_r, r_side.height, chassis_cmd_recv.r_target_len);
+    l_side.F_leg = gravity_ff ;//+ PIDCalculate(&leg_len_pid_l, l_side.height, chassis_cmd_recv.l_target_len);
+    r_side.F_leg = gravity_ff ;//+ PIDCalculate(&leg_len_pid_r, r_side.height, chassis_cmd_recv.r_target_len);
 }
 
 
 static void set_working_state()
 {
-
     if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE) 
     {
         chassis.yaw = chassis_cmd_recv.offset_angle;
@@ -340,6 +367,8 @@ static void set_working_state()
     else if(chassis_cmd_recv.chassis_mode == CHASSIS_NO_FOLLOW)
     {
         chassis.target_v = chassis_cmd_recv.vx;
+        chassis.target_yaw = chassis_cmd_recv.offset_angle;
+
 
     }
     else if (chassis_cmd_recv.chassis_mode == CHASSIS_FOLLOW_GIMBAL_YAW) // 底盘跟随
