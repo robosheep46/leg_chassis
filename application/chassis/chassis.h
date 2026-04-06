@@ -60,6 +60,7 @@ typedef struct {
     float leg_len, legd;
     float height, height_v;
     float F_leg, T_hip;
+    float F_leg2;
     float T_real_hip;
 
     float target_len;

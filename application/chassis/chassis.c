@@ -313,11 +313,11 @@ static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
 
     float vel_error_l = l_side.wheel_state[3];
     float vel_error_r = r_side.wheel_state[3];
-    if(fabsf(l_side.real_T_wheel) < 1)
+    if(fabsf(l_side.real_T_wheel) < 2)
     {
         PIDCalculate(&adaptive_pid_l, vel_error_l, 0);
     }
-    if(fabsf(r_side.real_T_wheel) < 1)
+    if(fabsf(r_side.real_T_wheel) < 2)
     {
         PIDCalculate(&adaptive_pid_r, vel_error_r, 0);
     }
@@ -345,6 +345,8 @@ static void leg_control() /* 腿长控制和Roll补偿 */
     static float roll_extra_comp_p = 400;
     float roll_comp = roll_extra_comp_p * chassis.roll;
 
+    l_side.F_leg2 = 50 +  PIDCalculate(&leg_len_pid_l, l_side.height, chassis_cmd_recv.l_target_len);
+    r_side.F_leg2 = 50 +  PIDCalculate(&leg_len_pid_r, r_side.height, chassis_cmd_recv.r_target_len);
 
 
     l_side.F_leg = gravity_ff ;//+ PIDCalculate(&leg_len_pid_l, l_side.height, chassis_cmd_recv.l_target_len);

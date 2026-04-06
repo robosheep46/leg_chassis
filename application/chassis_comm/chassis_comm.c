@@ -66,7 +66,7 @@ void ChassisCMDInit(RobotCtrlQueues_t *control_queue)
     buzzer = BuzzerRegister(buzzer_queue);
     CreateDaemon(buzzer);
 
-    chassis_cmd_send.l_target_len = 0.23;
+    chassis_cmd_send.l_target_len = 0.22;
     chassis_cmd_send.r_target_len = 0.22;
     #if defined (CHASSIS_BOARD) || defined (CHASSIS_BOARD_CONTROL_CHASSIS)
     cmd_control_chassis_queue = control_queue->control_chassis_queue;
@@ -129,7 +129,7 @@ static void BasicSet()
         {
             chassis_cmd_send.r_target_len = chassis_cmd_send.r_target_len;
         }
-        chassis_cmd_send.offset_angle -= 0.000002f * (float)rc_data[TEMP].rc.rocker_right_x;
+        chassis_cmd_send.offset_angle -= 0.000005f * (float)rc_data[TEMP].rc.rocker_right_x;
         // chassis_cmd_send.l_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_right_x;
         // chassis_cmd_send.r_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_right_x;
         // chassis_cmd_send.l_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_left_y;
