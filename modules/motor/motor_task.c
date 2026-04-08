@@ -29,7 +29,7 @@ __attribute__((noreturn)) void StartMOTORTASK(void *argument)
         motor_dt = dwt_get_time_ms() - motor_start;
         // if (motor_dt > 1)
         //     ;
-        osDelay(2);
+        osDelay(1);
     }
 }
 

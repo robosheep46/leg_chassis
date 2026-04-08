@@ -59,7 +59,6 @@ void ChassisCMDInit(RobotCtrlQueues_t *control_queue)
     rc_data = RemoteControlInit(&huart5);       // 遥控器通信串口初始化
     #endif // DEBUG
 
-    create_usart_task();
 
     static QueueHandle_t buzzer_queue = NULL;
     buzzer_queue = xQueueCreate(10, sizeof(Buzzer_Event_t));
@@ -108,9 +107,9 @@ static void BasicSet()
         {
             chassis_cmd_send.l_target_len =0.3;
         }
-        else if(chassis_cmd_send.l_target_len<= 0.18)
+        else if(chassis_cmd_send.l_target_len<= 0.22)
         {
-            chassis_cmd_send.l_target_len =0.18;
+            chassis_cmd_send.l_target_len =0.22;
         }
         else
         {
@@ -121,9 +120,9 @@ static void BasicSet()
         {
             chassis_cmd_send.r_target_len =0.3;
         }
-        else if(chassis_cmd_send.r_target_len<= 0.21)
+        else if(chassis_cmd_send.r_target_len<= 0.22)
         {
-            chassis_cmd_send.r_target_len =0.21;
+            chassis_cmd_send.r_target_len =0.22;
         }
         else
         {
@@ -142,7 +141,11 @@ static void BasicSet()
         }
         if (switch_is_mid((rc_data[TEMP].rc.switch_left)))
         {
-            chassis_cmd_send.chassis_mode  = CHASSIS_NO_FOLLOW;
+            chassis_cmd_send.chassis_mode  = CHASSIS_FOLLOW_GIMBAL_YAW;
+        }
+        if (switch_is_up((rc_data[TEMP].rc.switch_left)))
+        {
+            chassis_cmd_send.chassis_mode  = CHASSIS_ROTATE;
         }
     }
     

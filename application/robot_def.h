@@ -110,7 +110,6 @@ typedef enum
     CHASSIS_CONTROL_WHEEL,     // 轮式控制模式
     CHASSIS_NO_FOLLOW,         // 不跟随，允许全向平移
     CHASSIS_FOLLOW_GIMBAL_YAW, // 跟随模式
-    CHASSIS_CONTROL_LEG
 } chassis_mode_e;
 
 

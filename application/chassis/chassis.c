@@ -197,8 +197,8 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
 
     // 抗劈叉
     PID_Init_Config_s anti_crash_pid_conf = {
-        .Kp = 15,         //15
-        .Kd = 2,         //2
+        .Kp = 1,         //15
+        .Kd = 0,         //2
         .Ki = 0.0,
         .MaxOut = 30,
         .DeadBand = 0.001f,
@@ -308,9 +308,16 @@ static void set_leg_data()
 
 static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
 {
-    float p_ref = PIDCalculate(&steer_p_pid, chassis.yaw, chassis.target_yaw);
-    PIDCalculate(&steer_v_pid, chassis.wz, p_ref);
+    if(chassis_cmd_recv.chassis_mode == CHASSIS_FOLLOW_GIMBAL_YAW)
+    {
 
+        float p_ref = PIDCalculate(&steer_p_pid, chassis.yaw, chassis.target_yaw);
+        PIDCalculate(&steer_v_pid, chassis.wz, p_ref);
+    }
+    else if (chassis_cmd_recv.chassis_mode == CHASSIS_ROTATE) // 小陀螺
+    {
+        PIDCalculate(&steer_v_pid, chassis.wz, 2);
+    }
     float vel_error_l = l_side.wheel_state[3];
     float vel_error_r = r_side.wheel_state[3];
     if(fabsf(l_side.real_T_wheel) < 2)
@@ -322,8 +329,15 @@ static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
         PIDCalculate(&adaptive_pid_r, vel_error_r, 0);
     }
 
-    l_side.real_T_wheel = l_side.T_wheel - steer_v_pid.Output + adaptive_pid_l.Output;
-    r_side.real_T_wheel = r_side.T_wheel - steer_v_pid.Output + adaptive_pid_r.Output;
+    if(l_side.fly_flag==1||r_side.fly_flag ==1)
+    {
+        l_side.real_T_wheel =0;
+    }
+    else
+    {
+        l_side.real_T_wheel = l_side.T_wheel - steer_v_pid.Output + adaptive_pid_l.Output;
+        r_side.real_T_wheel = r_side.T_wheel - steer_v_pid.Output + adaptive_pid_r.Output;
+    }
 
 
     // // 抗劈叉
@@ -337,20 +351,24 @@ static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
 /************************************** leg Control **************************************/
 static void leg_control() /* 腿长控制和Roll补偿 */
 {
-    PIDCalculate(&roll_compensate_pid, chassis.roll, 0);
-    l_side.target_len += roll_compensate_pid.Output;
-    r_side.target_len -= roll_compensate_pid.Output;
+    // PIDCalculate(&roll_compensate_pid, chassis.roll, 0);
+    // l_side.target_len += roll_compensate_pid.Output;
+    // r_side.target_len -= roll_compensate_pid.Output;
 
-    static float gravity_ff = 5;
-    static float roll_extra_comp_p = 400;
-    float roll_comp = roll_extra_comp_p * chassis.roll;
+    static float gravity_ff = 50;
+    static float roll_extra_comp_p = 20;
+    float roll_comp=0;
 
-    l_side.F_leg2 = 50 +  PIDCalculate(&leg_len_pid_l, l_side.height, chassis_cmd_recv.l_target_len);
-    r_side.F_leg2 = 50 +  PIDCalculate(&leg_len_pid_r, r_side.height, chassis_cmd_recv.r_target_len);
-
-
-    l_side.F_leg = gravity_ff ;//+ PIDCalculate(&leg_len_pid_l, l_side.height, chassis_cmd_recv.l_target_len);
-    r_side.F_leg = gravity_ff ;//+ PIDCalculate(&leg_len_pid_r, r_side.height, chassis_cmd_recv.r_target_len);
+    if(l_side.fly_flag ==1||r_side.fly_flag ==1)
+    {
+        roll_comp =0;
+    }
+    else
+    {
+       roll_comp = roll_extra_comp_p * chassis.roll;
+    }
+    l_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_l, l_side.leg_len, chassis_cmd_recv.l_target_len) + roll_comp;
+    r_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, chassis_cmd_recv.r_target_len) - roll_comp;
 }
 
 
@@ -366,7 +384,7 @@ static void set_working_state()
         chassis.dist = chassis.target_dist = 0;
         // return;
     }
-    else if(chassis_cmd_recv.chassis_mode == CHASSIS_NO_FOLLOW)
+    else if(chassis_cmd_recv.chassis_mode == CHASSIS_FOLLOW_GIMBAL_YAW)
     {
         chassis.target_v = chassis_cmd_recv.vx;
         chassis.target_yaw = chassis_cmd_recv.offset_angle;
@@ -426,7 +444,7 @@ void ChassisTask(void *argument)
         calculate_support_force(&l_side, chassis_imu_data);
         calculate_support_force(&r_side, chassis_imu_data);
 
-        if(chassis_cmd_recv.chassis_mode == CHASSIS_NO_FOLLOW)
+        if(chassis_cmd_recv.chassis_mode == CHASSIS_FOLLOW_GIMBAL_YAW|| chassis_cmd_recv.chassis_mode == CHASSIS_ROTATE)
         {
             // LKMotorSetRef(r_driven, 0)   ;
             // LKMotorSetRef(l_driven, 0)   ;
