@@ -137,7 +137,7 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
     // 腿长控制
     PID_Init_Config_s l_leg_length_pid_conf = {
         .Kp = 700,
-        .Kd = 70,
+        .Kd = 50,
         .Ki = 0,
         .MaxOut = 60,
         .DeadBand = 0.0001f,
@@ -148,7 +148,7 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
 
     PID_Init_Config_s r_leg_length_pid_conf = {
         .Kp = 700,
-        .Kd = 70,
+        .Kd = 50,
         .Ki = 0,
         .MaxOut = 60,
         .DeadBand = 0.0001f,
@@ -158,10 +158,10 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
     PIDInit(&leg_len_pid_r, &r_leg_length_pid_conf);
 
     PID_Init_Config_s roll_compensate_pid_conf = {
-        .Kp = 0.0008f,
-        .Kd = 0.0002f,
+        .Kp = 0.008f,
+        .Kd = 0.002f,
         .Ki = 0.0f,
-        .MaxOut = 0.05,
+        .MaxOut = 0.2,
         .DeadBand = 0.001f,
         .Improve = PID_DerivativeFilter | PID_Derivative_On_Measurement,
         .Derivative_LPF_RC = 0.05,
@@ -190,6 +190,7 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .Ki = 0.0f,
         .MaxOut = 20,
         .DeadBand = 0.0f,
+
         .Improve = PID_DerivativeFilter | PID_Derivative_On_Measurement,
         .Derivative_LPF_RC = 0.05,
     };
@@ -242,23 +243,25 @@ static void set_leg_data()
     
     // DM8009 电机的角度是逆时针为正 ,这里顺时针转是增加角度
     // LK9025 电机的角度是逆时针为正 ，右轮电机速度为正。
-
-    l_side.phi1 = ( 180  + joint_lf->measure.real_total_angle  -36)*PI/180 ;
-    l_side.phi1_angle = 180 + joint_lf->measure.real_total_angle -36;
+    //大腿 phi1 180  小腿 phi4 0 
+    l_side.phi1 = ( 180  + joint_lf->measure.real_total_angle  -40)*PI/180 ;
+    l_side.phi1_angle = 180 + joint_lf->measure.real_total_angle -40;
     l_side.phi1_w =  joint_lf->measure.velocity;
-    l_side.phi4 = (  0 +  joint_lb->measure.real_total_angle +7 )*PI/180 ;
-    l_side.phi4_angle = 0 + joint_lb->measure.real_total_angle +7;
+    l_side.phi4 = (  0 +  joint_lb->measure.real_total_angle )*PI/180 ;
+    l_side.phi4_angle = 0 + joint_lb->measure.real_total_angle ;
     l_side.phi4_w =   joint_lb->measure.velocity;
 
     l_side.w_ecd = driven_l->measure.speed_rads;
     l_side.pitch   =  chassis_imu_data->pitch * DEGREE_2_RAD;
     l_side.pitch_w =  chassis_imu_data->gyro[0];
 
-    r_side.phi1 = (180 + joint_rb->measure.real_total_angle  -12) *PI/180;
-    r_side.phi1_angle = (180 + joint_rb->measure.real_total_angle  -12);
+
+    //大腿phi4 0  小腿phi1 180
+    r_side.phi1 = (180 + joint_rb->measure.real_total_angle -10) *PI/180;
+    r_side.phi1_angle = (180 + joint_rb->measure.real_total_angle  -10);
     r_side.phi1_w =  joint_rb->measure.velocity;
-    r_side.phi4 = ( 0 + joint_rf->measure.real_total_angle + 1.1) *PI/180;
-    r_side.phi4_angle = ( 0  + joint_rf->measure.real_total_angle +1.1);
+    r_side.phi4 = ( 0 + joint_rf->measure.real_total_angle ) *PI/180;
+    r_side.phi4_angle = ( 0  + joint_rf->measure.real_total_angle );
     r_side.phi4_w =   joint_rf->measure.velocity;
 
     // LK9025电机顺时针为负 +
@@ -267,7 +270,6 @@ static void set_leg_data()
     r_side.pitch   = -(chassis_imu_data->pitch ) * DEGREE_2_RAD;
     r_side.pitch_w = -chassis_imu_data->gyro[0];
 }
-
 
 
 static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
@@ -313,28 +315,6 @@ static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
 }
  
 /************************************** leg Control **************************************/
-static void leg_control() /* 腿长控制和Roll补偿 */
-{
-    // PIDCalculate(&roll_compensate_pid, chassis.roll, 0);
-    // l_side.target_len += roll_compensate_pid.Output;
-    // r_side.target_len -= roll_compensate_pid.Output;
-
-    static float gravity_ff = 50;
-    static float roll_extra_comp_p = 20;
-    float roll_comp=0;
-
-    if(l_side.fly_flag ==1||r_side.fly_flag ==1)
-    {
-        roll_comp =0;
-    }
-    else
-    {
-       roll_comp = roll_extra_comp_p * chassis.roll;
-    }
-    l_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_l, l_side.leg_len, chassis_cmd_recv.l_target_len) + roll_comp;
-    r_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, chassis_cmd_recv.r_target_len) - roll_comp;
-}
-
 static void stop_state()
 {
     chassis.yaw = chassis_imu_data->yaw_total_angle;
@@ -392,14 +372,35 @@ static void standup_state()
 
 static void balance_state()
 {
-    l_side.F_leg = 70 +  PIDCalculate(&leg_len_pid_l, l_side.leg_len, chassis_cmd_recv.l_target_len);
-    r_side.F_leg = 70 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, chassis_cmd_recv.r_target_len);
+    static float roll_extra_comp_p = 200;
+    float roll_comp=0;
+    roll_comp = roll_extra_comp_p * chassis.roll;
+    l_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_l, l_side.leg_len, l_side.target_len) + roll_comp;
+    r_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, r_side.target_len) - roll_comp;
 
-    l_side.T_hip = l_side.T_lqr_hip;
-    r_side.T_hip = r_side.T_lqr_hip;
+    PIDCalculate(&roll_compensate_pid, chassis.roll, 0);
+    l_side.target_len = chassis_cmd_recv.l_target_len - roll_compensate_pid.Output;
+    r_side.target_len = chassis_cmd_recv.r_target_len + roll_compensate_pid.Output;
 
-    l_side.T_wheel = l_side.T_lqr_wheel + l_side.T_motion_wheel;
-    r_side.T_wheel = r_side.T_lqr_wheel + r_side.T_motion_wheel;
+    PIDCalculate(&anti_crash_pid, l_side.phi0 + r_side.phi0 - PI, 0);
+    l_side.T_motion_hip = anti_crash_pid.Output ;//- swerving_speed_ff;
+    r_side.T_motion_hip = anti_crash_pid.Output ;//- swerving_speed_ff;
+    
+    l_side.T_hip = l_side.T_lqr_hip + l_side.T_motion_hip;
+    r_side.T_hip = r_side.T_lqr_hip + r_side.T_motion_hip;
+
+    if(fabsf(l_side.real_T_wheel) < 2)
+    {
+        PIDCalculate(&adaptive_pid_l, l_side.wheel_state[3], 0);
+    }
+    if(fabsf(r_side.real_T_wheel) < 2)
+    {
+        PIDCalculate(&adaptive_pid_r, r_side.wheel_state[3], 0);
+    }
+
+    
+    l_side.T_wheel = l_side.T_lqr_wheel - l_side.T_motion_wheel + adaptive_pid_l.Output;
+    r_side.T_wheel = r_side.T_lqr_wheel - r_side.T_motion_wheel + adaptive_pid_r.Output;
 }
 
 static void set_working_state()
@@ -469,9 +470,6 @@ void ChassisTask(void *argument)
 
         calculate_wheel_torgue(&l_side,  &chassis);
         calculate_wheel_torgue(&r_side, &chassis);
-        
-        // leg_control();
-
 
         calculate_leg_torgue(&l_side);
         calculate_leg_torgue(&r_side);

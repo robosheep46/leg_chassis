@@ -52,8 +52,10 @@ function K = get_k_length(leg_length)
     B=subs(B,[R,L,LM,l,mw,mp,M,Iw,Ip,IM,g],[R1,L1,LM1,l1,mw1,mp1,M1,Iw1,Ip1,IM1,9.8]);
     B=double(B);
     
-    Q=diag([500 1 600 100 5000 1]);%theta d_theta x d_x phi d_phi%700 1 600 200 1000 1
-    R=[220 0;0 1];                %T Tp [240 0;0 25]
+
+    Q=diag([700 1 500 100 20000 1]);%theta d_theta x d_x phi d_phi%700 1 600 100 20000 1
+    R=[220 0;0 30];                %T Tp [220 0;0 30]
+    
     
     K=lqr(A,B,Q,R);
   
