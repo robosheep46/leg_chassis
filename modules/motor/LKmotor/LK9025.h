@@ -10,8 +10,8 @@
 
 #define LK_MOTOR_MX_CNT 4 // 最多允许4个LK电机使用多电机指令,挂载在一条总线上
 
-#define I_MIN -1800
-#define I_MAX 1800
+#define I_MIN -2000
+#define I_MAX  2000
 #define CURRENT_SMOOTH_COEF 0.9f
 #define SPEED_SMOOTH_COEF 0.85f
 #define REDUCTION_RATIO_DRIVEN 1
