@@ -65,8 +65,8 @@ void ChassisCMDInit(RobotCtrlQueues_t *control_queue)
     buzzer = BuzzerRegister(buzzer_queue);
     CreateDaemon(buzzer);
 
-    chassis_cmd_send.l_target_len = 0.22;
-    chassis_cmd_send.r_target_len = 0.22;
+    chassis_cmd_send.l_target_len = 0.37;
+    chassis_cmd_send.r_target_len = 0.37;
     #if defined (CHASSIS_BOARD) || defined (CHASSIS_BOARD_CONTROL_CHASSIS)
     cmd_control_chassis_queue = control_queue->control_chassis_queue;
     #endif
@@ -87,58 +87,53 @@ void ChassisCMDInit(RobotCtrlQueues_t *control_queue)
 }
 
 #ifdef CHASSIS_BOARD_CONTROL_CHASSIS
+static float limit_leg_length(float leg_length)
+{
+    if(leg_length>= 0.37)
+    {
+        leg_length =0.37;
+    }
+    else if(leg_length<= 0.23)
+    {
+        leg_length =0.23;
+    }
+    else
+    {
+        leg_length = leg_length;
+    }
+    return leg_length;
+}
 static void BasicSet()
 {
+    //限制腿长
+
+
+    //
+
+
     if (switch_is_mid(rc_data[TEMP].rc.switch_right))
     {
-        // chassis_cmd_send.motor_rb -=  0.000002f*rc_data->rc.rocker_left_y;
-        // chassis_cmd_send.motor_rf -=  0.000002f*rc_data->rc.rocker_left_x;
-        // chassis_cmd_send.motor_lf -=  0.000002f*rc_data->rc.rocker_right_y;
-        // chassis_cmd_send.motor_lb -=  0.000002f*rc_data->rc.rocker_right_x;
-        // chassis_cmd_send.l_target_len -= 0.000002f*rc_data->rc.rocker_right_y;
-        // chassis_cmd_send.r_target_len -= 0.000002f*rc_data->rc.rocker_right_y;
 
-        // chassis_cmd_send.turn_position -=  0.000002f*rc_data->rc.rocker_left_y;
-        // chassis_cmd_send.change_length -=  0.000002f*rc_data->rc.rocker_right_y;
+
+        if (switch_is_down((rc_data[TEMP].rc.switch_left)))
+        {
+            chassis_cmd_send.chassis_mode  = CHASSIS_STAND_UP;
+            chassis_cmd_send.l_target_len -= 0.00009f;
+            chassis_cmd_send.r_target_len -= 0.00009f;
+
+            chassis_cmd_send.l_target_len = limit_leg_length(chassis_cmd_send.l_target_len);
+            chassis_cmd_send.r_target_len = limit_leg_length(chassis_cmd_send.r_target_len);
+        }
         chassis_cmd_send.vx = 0.002f * (float)rc_data[TEMP].rc.rocker_left_y;
-        chassis_cmd_send.l_target_len -= 0.000002f*(float)rc_data[TEMP].rc.rocker_right_y;
-        chassis_cmd_send.r_target_len -= 0.000002f*(float)rc_data[TEMP].rc.rocker_right_y;
-        if(chassis_cmd_send.l_target_len>= 0.3)
-        {
-            chassis_cmd_send.l_target_len =0.3;
-        }
-        else if(chassis_cmd_send.l_target_len<= 0.22)
-        {
-            chassis_cmd_send.l_target_len =0.22;
-        }
-        else
-        {
-            chassis_cmd_send.l_target_len = chassis_cmd_send.l_target_len;
-        }
-        
-        if(chassis_cmd_send.r_target_len>= 0.3)
-        {
-            chassis_cmd_send.r_target_len =0.3;
-        }
-        else if(chassis_cmd_send.r_target_len<= 0.22)
-        {
-            chassis_cmd_send.r_target_len =0.22;
-        }
-        else
-        {
-            chassis_cmd_send.r_target_len = chassis_cmd_send.r_target_len;
-        }
+        chassis_cmd_send.l_target_len -= 0.0000001f*(float)rc_data[TEMP].rc.rocker_right_y;
+        chassis_cmd_send.r_target_len -= 0.0000001f*(float)rc_data[TEMP].rc.rocker_right_y;
         chassis_cmd_send.offset_angle -= 0.000005f * (float)rc_data[TEMP].rc.rocker_right_x;
         // chassis_cmd_send.l_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_right_x;
         // chassis_cmd_send.r_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_right_x;
         // chassis_cmd_send.l_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_left_y;
         // chassis_cmd_send.r_target_len += 0.000005f*(float)rc_data[TEMP].rc.rocker_right_y;
         // chassis_cmd_send.offset_angle +=  0.0005f*(float)rc_data[TEMP].rc.rocker_left_x;
-        if (switch_is_down((rc_data[TEMP].rc.switch_left)))
-        {
-            chassis_cmd_send.chassis_mode  = CHASSIS_ZERO_FORCE;
-            
-        }
+
         if (switch_is_mid((rc_data[TEMP].rc.switch_left)))
         {
             chassis_cmd_send.chassis_mode  = CHASSIS_FOLLOW_GIMBAL_YAW;
@@ -152,15 +147,6 @@ static void BasicSet()
     else
     {
         chassis_cmd_send.chassis_mode = CHASSIS_ZERO_FORCE;
-        if(chassis_cmd_send.fly_flag)
-        {
-
-        }
-        else
-        {
-            chassis_cmd_send.vx = 0.003f * (float)rc_data[TEMP].rc.rocker_left_x;
-
-        }
     }
 }
 #endif

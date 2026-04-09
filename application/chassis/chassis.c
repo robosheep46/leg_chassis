@@ -25,8 +25,8 @@
 static Chassis_Ctrl_Cmd_s chassis_cmd_recv;             // 底盘接收到的控制命令
 static Chassis_Upload_Data_s chassis_feedback_data;     // 底盘回传的反馈数据
 
-static LKMotorInstance *r_driven, *l_driven, *driven[2]; // 左右驱动轮
-static DMMotorInstance *lf, *lb, *rf, *rb,*joint[4]; // 双马达
+static LKMotorInstance *driven_r, *driven_l, *driven[2]; // 左右驱动轮
+static DMMotorInstance *joint_lf, *joint_lb, *joint_rf, *joint_rb,*joint[4]; // 双马达
 static attitude_t *chassis_imu_data;
 // static Robot_Status_e chassis_status;
 
@@ -78,11 +78,11 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .motor_type = LK9025,
     };
     driven_conf.can_init_config.tx_id = 0x01;
-    driven[0] = r_driven = LKMotorInit(&driven_conf);
+    driven[0] = driven_r = LKMotorInit(&driven_conf);
 
     driven_conf.can_init_config.can_handle = &hfdcan1,
     driven_conf.can_init_config.tx_id = 0x02;
-    driven[1] = l_driven = LKMotorInit(&driven_conf);
+    driven[1] = driven_l = LKMotorInit(&driven_conf);
     // 关节电机
     Motor_Init_Config_s r_joint_conf = {
         // 写一个,剩下的修改方向和id即可
@@ -103,10 +103,10 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .motor_type = DM8009};
     r_joint_conf.can_init_config.tx_id =  0x01;
     r_joint_conf.can_init_config.rx_id =  0x11;
-    joint[RF] = rf = DMMotorInit(&r_joint_conf);
+    joint[RF] = joint_rf = DMMotorInit(&r_joint_conf);
     r_joint_conf.can_init_config.tx_id = 0x02;
     r_joint_conf.can_init_config.rx_id = 0x12;
-    joint[RB] = rb = DMMotorInit(&r_joint_conf);
+    joint[RB] = joint_rb = DMMotorInit(&r_joint_conf);
 
     Motor_Init_Config_s l_joint_conf = {
         // 写一个,剩下的修改方向和id即可
@@ -127,19 +127,19 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .motor_type = DM8009};
     l_joint_conf.can_init_config.tx_id = 0x03;
     l_joint_conf.can_init_config.rx_id = 0x13;
-    joint[LB] = lb = DMMotorInit(&l_joint_conf);
+    joint[LB] = joint_lb = DMMotorInit(&l_joint_conf);
     l_joint_conf.can_init_config.tx_id = 0x04;
     l_joint_conf.can_init_config.rx_id = 0x14;
-    joint[LF] = lf = DMMotorInit(&l_joint_conf);
+    joint[LF] = joint_lf = DMMotorInit(&l_joint_conf);
 
 
 // /*******************************LEG_PID_INIT******************************* */
     // 腿长控制
     PID_Init_Config_s l_leg_length_pid_conf = {
         .Kp = 700,
-        .Kd = 40,
+        .Kd = 70,
         .Ki = 0,
-        .MaxOut = 40,
+        .MaxOut = 60,
         .DeadBand = 0.0001f,
         .Improve = PID_ChangingIntegrationRate | PID_Trapezoid_Intergral | PID_DerivativeFilter | PID_Derivative_On_Measurement,
         .Derivative_LPF_RC = 0.05,
@@ -148,9 +148,9 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
 
     PID_Init_Config_s r_leg_length_pid_conf = {
         .Kp = 700,
-        .Kd = 40,
+        .Kd = 70,
         .Ki = 0,
-        .MaxOut = 40,
+        .MaxOut = 60,
         .DeadBand = 0.0001f,
         .Improve = PID_ChangingIntegrationRate | PID_Trapezoid_Intergral | PID_DerivativeFilter | PID_Derivative_On_Measurement,
         .Derivative_LPF_RC = 0.05,
@@ -197,7 +197,7 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
 
     // 抗劈叉
     PID_Init_Config_s anti_crash_pid_conf = {
-        .Kp = 1,         //15
+        .Kp = 15,         //15
         .Kd = 0,         //2
         .Ki = 0.0,
         .MaxOut = 30,
@@ -231,43 +231,7 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
     observe_speed_init(&chassis);
 }
 /************************************** Motor Control **************************************/
-static void EnableAllMotor()
-{
-    for (uint8_t i = 0; i < DRIVEN_CNT; i++) {
-        LKMotorEnable(driven[i]);
-    }
-    for (uint8_t i = 0; i < JOINT_CNT; i++) {
-        DMMotorEnable(joint[i]);
-    }
-}
 
-static void ResetChassis()
-{
-    EnableAllMotor();
-    
-    // 重置状态
-    chassis.target_v = 0;
-    chassis.dist = chassis.target_dist = 0;
-    chassis.target_yaw = chassis.yaw;
-    
-    // 停止所有电机
-    LKMotorSetRef(l_driven, 0);
-    // LKMotorSetRef(r_driven, 0);
-    for (uint8_t i = 0; i < JOINT_CNT; i++)
-    {
-        DMMotorOuterLoop(joint[i], ANGLE_LOOP);
-        // DMMotorSetRef(joint[i], 0);
-    }    
-
-}
-
-
-/**
-* @brief 将电机和imu的数据 放进LegParam结构体和chassisParam结构体
-* 
-* @note LK9025电机逆时针旋转为正
-* 
-*/
 static void set_leg_data()
 {
     chassis.yaw = chassis_imu_data->yaw_total_angle * DEGREE_2_RAD;
@@ -278,32 +242,32 @@ static void set_leg_data()
     
     // DM8009 电机的角度是逆时针为正 ,这里顺时针转是增加角度
     // LK9025 电机的角度是逆时针为正 ，右轮电机速度为正。
-    //小腿 phi1 180  大腿 phi4 0 
-    l_side.phi1 = ( 180  + lf->measure.real_total_angle  -13)*PI/180 ;
-    l_side.phi1_angle = 180 + lf->measure.real_total_angle -13;
-    l_side.phi1_w =  lf->measure.velocity;
-    l_side.phi4 = (  0 +  lb->measure.real_total_angle +18 )*PI/180 ;
-    l_side.phi4_angle = 0 + lb->measure.real_total_angle +18;
-    l_side.phi4_w =   lb->measure.velocity;
 
-    l_side.w_ecd = l_driven->measure.speed_rads;
+    l_side.phi1 = ( 180  + joint_lf->measure.real_total_angle  -36)*PI/180 ;
+    l_side.phi1_angle = 180 + joint_lf->measure.real_total_angle -36;
+    l_side.phi1_w =  joint_lf->measure.velocity;
+    l_side.phi4 = (  0 +  joint_lb->measure.real_total_angle +7 )*PI/180 ;
+    l_side.phi4_angle = 0 + joint_lb->measure.real_total_angle +7;
+    l_side.phi4_w =   joint_lb->measure.velocity;
+
+    l_side.w_ecd = driven_l->measure.speed_rads;
     l_side.pitch   =  chassis_imu_data->pitch * DEGREE_2_RAD;
     l_side.pitch_w =  chassis_imu_data->gyro[0];
 
-    //小腿phi 0  大腿phi1 180
-    r_side.phi1 = (180 + rb->measure.real_total_angle  -23) *PI/180;
-    r_side.phi1_angle = (180 + rb->measure.real_total_angle  -23);
-    r_side.phi1_w =  rb->measure.velocity;
-    r_side.phi4 = ( 0 + rf->measure.real_total_angle + 7.5) *PI/180;
-    r_side.phi4_angle = ( 0  + rf->measure.real_total_angle +7.5);
-    r_side.phi4_w =   rf->measure.velocity;
+    r_side.phi1 = (180 + joint_rb->measure.real_total_angle  -12) *PI/180;
+    r_side.phi1_angle = (180 + joint_rb->measure.real_total_angle  -12);
+    r_side.phi1_w =  joint_rb->measure.velocity;
+    r_side.phi4 = ( 0 + joint_rf->measure.real_total_angle + 1.1) *PI/180;
+    r_side.phi4_angle = ( 0  + joint_rf->measure.real_total_angle +1.1);
+    r_side.phi4_w =   joint_rf->measure.velocity;
 
     // LK9025电机顺时针为负 +
-    r_side.w_ecd = r_driven->measure.speed_rads;
+    r_side.w_ecd = driven_r->measure.speed_rads;
     
     r_side.pitch   = -(chassis_imu_data->pitch ) * DEGREE_2_RAD;
     r_side.pitch_w = -chassis_imu_data->gyro[0];
 }
+
 
 
 static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
@@ -344,8 +308,8 @@ static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
     // static float swerving_speed_ff, ff_coef = 3;
     // swerving_speed_ff = ff_coef * steer_v_pid.Output; // 用于抗劈叉的前馈
     PIDCalculate(&anti_crash_pid, l_side.phi0 + r_side.phi0 - PI, 0);
-    l_side.T_real_hip = l_side.T_hip + anti_crash_pid.Output ;//- swerving_speed_ff;
-    r_side.T_real_hip = r_side.T_hip + anti_crash_pid.Output ;//- swerving_speed_ff;
+    l_side.T_motion_hip = anti_crash_pid.Output ;//- swerving_speed_ff;
+    r_side.T_motion_hip = anti_crash_pid.Output ;//- swerving_speed_ff;
 }
  
 /************************************** leg Control **************************************/
@@ -371,31 +335,109 @@ static void leg_control() /* 腿长控制和Roll补偿 */
     r_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, chassis_cmd_recv.r_target_len) - roll_comp;
 }
 
+static void stop_state()
+{
+    chassis.yaw = chassis_imu_data->yaw_total_angle;
+    chassis.target_v = 0;
+    chassis.dist = chassis.target_dist = 0;
+
+    l_side.F_leg = 0;
+    r_side.F_leg = 0;
+
+    l_side.T_hip = 0;
+    r_side.T_hip = 0;
+
+    l_side.T_wheel = 0 ;
+    r_side.T_wheel = 0 ;
+}
+static void recover_leg_length()
+{
+    l_side.F_leg = 0 +  PIDCalculate(&leg_len_pid_l, l_side.leg_len, chassis_cmd_recv.l_target_len);
+    r_side.F_leg = 0 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, chassis_cmd_recv.r_target_len);
+
+    l_side.T_hip = 0;//l_side.T_lqr_hip;
+    r_side.T_hip = 0;//r_side.T_lqr_hip;
+
+    l_side.T_wheel = 0 ;
+    r_side.T_wheel = 0 ;
+}
+
+static void follow_state()
+{
+    float p_ref = PIDCalculate(&steer_p_pid, chassis.yaw, chassis.target_yaw);
+    l_side.T_motion_wheel = PIDCalculate(&steer_v_pid, chassis.wz, p_ref);
+    r_side.T_motion_wheel = PIDCalculate(&steer_v_pid, chassis.wz, p_ref);
+}
+
+static void rotate_state()
+{
+    l_side.T_motion_wheel = PIDCalculate(&steer_v_pid, chassis.wz, 2);
+    r_side.T_motion_wheel = PIDCalculate(&steer_v_pid, chassis.wz, 2);
+}
+static void standup_state()
+{
+    chassis.yaw = chassis_imu_data->yaw_total_angle;
+    chassis.target_v = 0;
+    chassis.dist = chassis.target_dist = 0;
+
+    l_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_l, l_side.leg_len, chassis_cmd_recv.l_target_len);
+    r_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, chassis_cmd_recv.r_target_len);
+
+    l_side.T_hip = 0.1 * l_side.T_lqr_hip;
+    r_side.T_hip = 0.1 * r_side.T_lqr_hip;
+
+    l_side.T_wheel = l_side.T_lqr_wheel - l_side.T_motion_wheel;
+    r_side.T_wheel = r_side.T_lqr_wheel - r_side.T_motion_wheel;
+}
+
+static void balance_state()
+{
+    l_side.F_leg = 70 +  PIDCalculate(&leg_len_pid_l, l_side.leg_len, chassis_cmd_recv.l_target_len);
+    r_side.F_leg = 70 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, chassis_cmd_recv.r_target_len);
+
+    l_side.T_hip = l_side.T_lqr_hip;
+    r_side.T_hip = r_side.T_lqr_hip;
+
+    l_side.T_wheel = l_side.T_lqr_wheel + l_side.T_motion_wheel;
+    r_side.T_wheel = r_side.T_lqr_wheel + r_side.T_motion_wheel;
+}
 
 static void set_working_state()
 {
     if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE) 
     {
-        chassis.yaw = chassis_cmd_recv.offset_angle;
-        chassis.target_v = chassis_cmd_recv.vx;
-
-        // 目标速度置0
-        // chassis.target_v = 0;
-        chassis.dist = chassis.target_dist = 0;
-        // return;
+        stop_state();
+    }
+    else if (chassis_cmd_recv.chassis_mode == CHASSIS_STAND_UP) 
+    {
+        if(l_side.leg_len <=0.24 &&r_side.leg_len <=0.24)
+        {
+            if(fabsf(l_side.theta)<0.3&&fabsf(r_side.theta)<0.3)
+            {
+                // balance_state();
+            }
+            else
+            {
+                // standup_state();
+            }
+        }
+        else
+        {
+            recover_leg_length();
+        }
     }
     else if(chassis_cmd_recv.chassis_mode == CHASSIS_FOLLOW_GIMBAL_YAW)
     {
         chassis.target_v = chassis_cmd_recv.vx;
         chassis.target_yaw = chassis_cmd_recv.offset_angle;
-
-
+        follow_state();
+        balance_state();
     }
-    else if (chassis_cmd_recv.chassis_mode == CHASSIS_FOLLOW_GIMBAL_YAW) // 底盘跟随
+    else if (chassis_cmd_recv.chassis_mode == CHASSIS_ROTATE) // 底盘跟随
     {
-        chassis.target_yaw = chassis_cmd_recv.offset_angle;
+        rotate_state();
+        balance_state();
     }
-    // EnableAllMotor();
 }
 
 
@@ -405,11 +447,6 @@ void ChassisTask(void *argument)
     for(;;)
     {
         xQueueReceive(chassis_recv_queue, &chassis_cmd_recv, 0);
-        // xQueueReceive(imu_queue, &Chassis_IMU_data, 0);
-        // // DMMotorEnable(rf);
-        // // DMMotorEnable(rb);
-        // // static uint32_t safety_counter = 0;
-            
         del_t = dwt_get_delta_time(&balance_dwt_cnt);
             
         // 1. 设置工作状态
@@ -433,7 +470,7 @@ void ChassisTask(void *argument)
         calculate_wheel_torgue(&l_side,  &chassis);
         calculate_wheel_torgue(&r_side, &chassis);
         
-        leg_control();
+        // leg_control();
 
 
         calculate_leg_torgue(&l_side);
@@ -444,32 +481,32 @@ void ChassisTask(void *argument)
         calculate_support_force(&l_side, chassis_imu_data);
         calculate_support_force(&r_side, chassis_imu_data);
 
-        if(chassis_cmd_recv.chassis_mode == CHASSIS_FOLLOW_GIMBAL_YAW|| chassis_cmd_recv.chassis_mode == CHASSIS_ROTATE)
-        {
-            // LKMotorSetRef(r_driven, 0)   ;
-            // LKMotorSetRef(l_driven, 0)   ;
-            // DMMotorSetFFTorque(lb, 0)  ;
-            // DMMotorSetFFTorque(lf, 0)  ;
-            // DMMotorSetFFTorque(rf, 0)  ; 
+        // if(chassis_cmd_recv.chassis_mode == CHASSIS_FOLLOW_GIMBAL_YAW|| chassis_cmd_recv.chassis_mode == CHASSIS_ROTATE)
+        // {
+            // LKMotorSetRef(driven_r, 0)   ;
+            // LKMotorSetRef(driven_l, 0)   ;
+            // DMMotorSetFFTorque(joint_lb, 0)  ;
+            // DMMotorSetFFTorque(joint_lf, 0)  ;
+            // DMMotorSetFFTorque(joint_rf, 0)  ; 
             // DMMotorSetFFTorque(rb, 0)  ;
 
-            LKMotorSetRef(l_driven,l_side.real_T_wheel*124.12);
-            LKMotorSetRef(r_driven,r_side.real_T_wheel*124.12);
+            LKMotorSetRef(driven_l,l_side.T_wheel*124.12);
+            LKMotorSetRef(driven_r,r_side.T_wheel*124.12);
 
-            DMMotorSetFFTorque(lb, l_side.T_front )  ;
-            DMMotorSetFFTorque(lf, l_side.T_back ) ;
-            DMMotorSetFFTorque(rf, r_side.T_front )  ; 
-            DMMotorSetFFTorque(rb, r_side.T_back)  ;
-        }
-        else
-        {
-            LKMotorSetRef(r_driven, 0)   ;
-            LKMotorSetRef(l_driven, 0)   ;
-            DMMotorSetFFTorque(lb, 0) ;
-            DMMotorSetFFTorque(lf, 0) ;
-            DMMotorSetFFTorque(rf, 0 ) ; 
-            DMMotorSetFFTorque(rb, 0)  ;
-        }
+            DMMotorSetFFTorque(joint_lb, l_side.T_front )  ;
+            DMMotorSetFFTorque(joint_lf, l_side.T_back ) ;
+            DMMotorSetFFTorque(joint_rf, r_side.T_front )  ; 
+            DMMotorSetFFTorque(joint_rb, r_side.T_back)  ;
+        // }
+        // else
+        // {
+            // LKMotorSetRef(driven_r, 0)   ;
+            // LKMotorSetRef(driven_l, 0)   ;
+            // DMMotorSetFFTorque(joint_lb, 0) ;
+            // DMMotorSetFFTorque(joint_lf, 0) ;
+            // DMMotorSetFFTorque(joint_rf, 0 ) ; 
+            // DMMotorSetFFTorque(joint_rb, 0)  ;
+        // }
         osDelay(1);
     }
 }

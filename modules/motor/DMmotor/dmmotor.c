@@ -223,13 +223,13 @@ void DMMotorSetSpeed(DMMotorInstance *motor, float Speed)
 
 void DMMotorSetFFTorque(DMMotorInstance *motor, float Torque)
 {
-    if(Torque>=17)
+    if(Torque>=18)
     {
-        motor->motor_controller.current_PID.Ref = 17;
+        motor->motor_controller.current_PID.Ref = 18;
     }
-    else if(Torque<=-17)
+    else if(Torque<=-18)
     {
-        motor->motor_controller.current_PID.Ref = -17;
+        motor->motor_controller.current_PID.Ref = -18;
     }
     else
     {

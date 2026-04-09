@@ -60,16 +60,31 @@ typedef struct {
     float leg_len, legd;
     float height, height_v;
     float F_leg, T_hip;
-    float F_leg2;
-    float T_real_hip;
-
     float target_len;
 
     // 雅可比矩阵
     // float jacobian[2][2];
     
+    //lqr
+    float T_lqr_theta_wheel;
+    float T_lqr_theta_hip;
+
+    float T_lqr_dist_wheel;
+    float T_lqr_dist_hip;
+
+    float T_lqr_pitch_wheel;
+    float T_lqr_pitch_hip;
+
+    float T_lqr_wheel;
+    float T_lqr_hip;
+
+    // 转向
+    float T_motion_wheel;
+    float T_motion_hip;
+
     // 力和力矩
-    float T_wheel, T[2];
+    float T_wheel;
+    // float 
     float real_T_wheel;
     // 运动学参数
     float wheel_w, wheel_dist, body_v, zw_ddot, support_force;

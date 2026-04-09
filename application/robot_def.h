@@ -106,6 +106,7 @@ typedef enum
 typedef enum
 {
     CHASSIS_ZERO_FORCE = 0,    // 电流零输入
+    CHASSIS_STAND_UP,
     CHASSIS_ROTATE,            // 小陀螺模式
     CHASSIS_CONTROL_WHEEL,     // 轮式控制模式
     CHASSIS_NO_FOLLOW,         // 不跟随，允许全向平移
