@@ -26,7 +26,7 @@ static CANInstance dm_sender_assignment[4] = {
     [3] = {.can_handle = &hfdcan1, .txconf.Identifier = 0x04, .txconf.IdType = FDCAN_STANDARD_ID, .txconf.TxFrameType = FDCAN_DATA_FRAME, .txconf.DataLength = 0x08, .tx_buff = {0}},
 };
 
-static void MotorSenderGrouping(DMMotorInstance *motor, CAN_Init_Config_s *config)
+static void group_motor(DMMotorInstance *motor, CAN_Init_Config_s *config)
 {
     //直接用->运算符访问电机的成员再进行操作，开销会更多   
     uint8_t motor_send_num;
@@ -35,29 +35,28 @@ static void MotorSenderGrouping(DMMotorInstance *motor, CAN_Init_Config_s *confi
     if(motor->motor_can_instace->tx_id == 0x01)
     {   
         motor_grouping = 0;
-        motor->motor_can_instace->txconf.Identifier = 0x01;
+        motor->motor_can_instace->txconf.Identifier = 0x101;
         enable_flag[0]=1;
         dm_sender_assignment[0].tx_id = motor->motor_can_instace->tx_id;
-
     }
     else if(motor->motor_can_instace->tx_id == 0x02)
     {
         motor_grouping = 1;
-        motor->motor_can_instace->txconf.Identifier = 0x02;
+        motor->motor_can_instace->txconf.Identifier = 0x102;
         enable_flag[1]=1;
         dm_sender_assignment[1].tx_id = motor->motor_can_instace->tx_id;
     }
     else if(motor->motor_can_instace->tx_id == 0x03)
     {
         motor_grouping = 2;
-        motor->motor_can_instace->txconf.Identifier = 0x03;
+        motor->motor_can_instace->txconf.Identifier = 0x103;
         enable_flag[2]=1;
         dm_sender_assignment[2].tx_id = motor->motor_can_instace->tx_id;
     }
     else if(motor->motor_can_instace->tx_id == 0x04)
     {
         motor_grouping = 3;
-        motor->motor_can_instace->txconf.Identifier = 0x04;
+        motor->motor_can_instace->txconf.Identifier = 0x104;
         enable_flag[3]=1;
         dm_sender_assignment[3].tx_id = motor->motor_can_instace->tx_id;
     }
@@ -80,14 +79,19 @@ static float uint_to_float(int x_int, float x_min, float x_max, int bits)
     return ((float)x_int) * span / ((float)((1 << bits) - 1)) + offset;
 }
 
-static void DMMotorSetMode(DMMotor_Mode_e cmd, DMMotorInstance *motor)
+static void set_dm_motor_mit_mode(dm_motor_mit_mode_e cmd, DMMotorInstance *motor)
 {
     memset(motor->motor_can_instace->tx_buff, 0xff, 7);  // 发送电机指令的时候前面7bytes都是0xff
     motor->motor_can_instace->tx_buff[7] = (uint8_t)cmd; // 最后一位是命令id
     can_transmit(motor->motor_can_instace, 1);
 }
 
-static void DMMotorDecode(CANInstance *motor_can)
+void dmmotor_set_control_mode(DMMotorInstance *motor,dm_motor_control_mode_e mode)
+{
+    motor->control_mode = mode;
+}
+
+static void dmmotor_decode(CANInstance *motor_can)
 {
     uint16_t tmp; // 用于暂存解析值,稍后转换成float数据,避免多次创建临时变量
     uint8_t *rxbuff = motor_can->rx_buff;
@@ -139,27 +143,30 @@ static void DMMotorDecode(CANInstance *motor_can)
 
 
     // 规范化到[-180, 180]范围
-    if(measure->real_angle_single_round > 180.0f) {
+    if(measure->real_angle_single_round > 180.0f) 
+    {
         measure->real_angle_single_round -= 360.0f;
         measure->real_total_round++;
-    } else if(measure->real_angle_single_round < -180.0f) {
+    }
+    else if(measure->real_angle_single_round < -180.0f) 
+    {
         measure->real_angle_single_round += 360.0f;
         measure->real_total_round--;
     }
     if(motor->init_flag == 0)
     {
         motor->init_flag = 1;
-        DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);    
+        set_dm_motor_mit_mode(DM_CMD_MOTOR_MODE, motor);    
         dwt_delay(0.1);
     }
 }
 
-static void DMMotorLostCallback(void *motor_ptr)
+static void dmmotor_lost_callback(void *motor_ptr)
 {
     DMMotorInstance *motor = (DMMotorInstance *)motor_ptr;
-    DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);
-    dwt_delay(0.1);
-    motor->init_flag = 0;
+    // set_dm_motor_mit_mode(DM_CMD_MOTOR_MODE, motor);
+    // dwt_delay(0.1);
+    // motor->init_flag = 0;
     memset(&(motor->measure), 0, sizeof(motor->measure));
 }
 
@@ -169,12 +176,12 @@ static void dm_motor_other_error_callback(void *motor_ptr)
     motor->other_error_flag = 1;
 }
 
-void DMMotorCaliEncoder(DMMotorInstance *motor)
+void dmmotor_cali_encoder(DMMotorInstance *motor)
 {
-    DMMotorSetMode(DM_CMD_ZERO_POSITION, motor);
+    set_dm_motor_mit_mode(DM_CMD_ZERO_POSITION, motor);
     dwt_delay(0.1);
 }
-DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
+DMMotorInstance *dmmotor_init(Motor_Init_Config_s *config)
 {
     DMMotorInstance *motor = (DMMotorInstance *)malloc(sizeof(DMMotorInstance));
     memset(motor, 0, sizeof(DMMotorInstance));
@@ -187,41 +194,36 @@ DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config)
     motor->motor_controller.other_speed_feedback_ptr = config->controller_param_init_config.other_speed_feedback_ptr;
     motor->motor_type = config->motor_type;
     motor->mit_flag=config->mit_flag;
-    motor->motor_can_instace->tx_id = config->can_init_config.tx_id;
+    motor->motor_can_instace->tx_id = config->can_init_config.tx_id+0x100;
     motor->motor_can_instace->rx_id = config->can_init_config.rx_id;
-    config->can_init_config.can_module_callback = DMMotorDecode;
+    config->can_init_config.can_module_callback = dmmotor_decode;
     config->can_init_config.id = motor;
     motor->motor_can_instace = can_register(&config->can_init_config);
-    MotorSenderGrouping(motor,&config->can_init_config);
+    group_motor(motor,&config->can_init_config);
 
     Daemon_Init_Config_s conf = {
-        .owner_callback = DMMotorLostCallback,
+        .owner_callback = dmmotor_lost_callback,
         .other_modules_error_callback = dm_motor_other_error_callback,
         .owner_id = motor,
-        .reload_count = 10,
+        .reload_count = 50,
     };
     motor->motor_daemon = DaemonRegister(&conf);
 
-    DMMotorEnable(motor);
-    DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);    
+    dmmotor_enable(motor);
+    set_dm_motor_mit_mode(DM_CMD_MOTOR_MODE, motor);    
     dwt_delay(0.1);
-    // DMMotorCaliEncoder(motor);
-    DMMotorSetMode(DM_CMD_MOTOR_MODE, motor);    
-    dwt_delay(0.1);
+    // dmmotor_cali_encoder(motor);
     dm_motor_instance[idx++] = motor;
     return motor;
 }
-void DMMotorSetPosition(DMMotorInstance *motor, float position)
+void dmmotor_set_position(DMMotorInstance *motor, float position,float speed)
 {
+    dmmotor_set_control_mode(motor, POSITION_MODE);
     motor->motor_controller.angle_PID.Ref = position;
+    motor->motor_controller.speed_PID.Ref = speed;
 }
 
-void DMMotorSetSpeed(DMMotorInstance *motor, float Speed)
-{
-    motor->motor_controller.speed_PID.Ref = Speed;
-}
-
-void DMMotorSetFFTorque(DMMotorInstance *motor, float Torque)
+void dmmotor_set_torque(DMMotorInstance *motor, float Torque)
 {
     if(Torque>=18)
     {
@@ -236,37 +238,70 @@ void DMMotorSetFFTorque(DMMotorInstance *motor, float Torque)
         motor->motor_controller.current_PID.Ref = Torque;
     }
 }
-void DMMotorSetRef(DMMotorInstance *motor, float ref)
-{
-    motor->motor_controller.pid_ref = ref;
-}
-void DMMotorEnable(DMMotorInstance *motor)
+
+void dmmotor_enable(DMMotorInstance *motor)
 {
     motor->stop_flag = MOTOR_ENALBED;
 }
 
-void DMMotorStop(DMMotorInstance *motor)//不使用使能模式是因为需要收到反馈
+void dmmotor_stop(DMMotorInstance *motor)//不使用使能模式是因为需要收到反馈
 {
-    motor->motor_controller.angle_PID.Ref = 0;
-    motor->motor_controller.speed_PID.Ref = 0;
     motor->motor_controller.current_PID.Ref = 0;
-    motor->motor_controller.angle_PID.Kp = 0;
-    motor->motor_controller.speed_PID.Kd = 0;
+    motor->stop_flag = MOTOR_STOP;
 }
 
-void DMMotorOuterLoop(DMMotorInstance *motor, Closeloop_Type_e type)
+static void dmmotor_mit_mode(DMMotorInstance *motor)
 {
-    motor->motor_settings.outer_loop_type = type;
+    motor->motor_can_instace->txconf.Identifier = motor->motor_can_instace->tx_id;
+    uint16_t torque_uint;
+    if (motor->other_error_flag || motor->stop_flag == MOTOR_STOP) 
+    {
+        torque_uint = float_to_uint(0, DM_T_MIN, DM_T_MAX, 12);
+    }
+    else 
+    {
+        torque_uint = float_to_uint(motor->motor_controller.current_PID.Ref, DM_T_MIN, DM_T_MAX, 12);
+    }
+
+    uint8_t *buf = motor->motor_can_instace->tx_buff;
+    buf[0] = 0;
+    buf[1] = 0;                                
+    buf[2] = 0;                               
+    buf[3] = 0;
+    buf[4] = 0;
+    buf[5] = 0;
+    buf[6] = (torque_uint >> 8) & 0x0F;            // Torque 高 4 位
+    buf[7] = torque_uint & 0xFF;                   // Torque 低 8 位
+    if (motor->init_flag == 1)
+    {
+        can_transmit(motor->motor_can_instace, 1);
+    }
 }
 
+static void dmmotor_position_mode(DMMotorInstance *motor)
+{
+    motor->motor_can_instace->txconf.Identifier = motor->motor_can_instace->tx_id + 0x100;
 
+    float p_des = motor->motor_controller.angle_PID.Ref;
+    float v_des = motor->motor_controller.speed_PID.Ref;
 
+    // 若电机处于停止状态，强制速度给定为 0
+    if (motor->stop_flag == MOTOR_STOP) 
+    {
+        v_des = 0.0f;
+    }
+
+    uint8_t *buf = motor->motor_can_instace->tx_buff;
+    memcpy(buf,      &p_des, 4);
+    memcpy(buf + 4,  &v_des, 4);
+    // 发送 CAN 帧
+    can_transmit(motor->motor_can_instace, 1);
+}
 void DMMotorTask(void *argument)
 {
     for(;;)
     {
         DMMotorInstance *motor;
-        DMMotor_Send_s motor_send_mailbox;
 
         float set;        // 电机控制CAN发送设定值
         Motor_Control_Setting_s *setting; // 电机控制参数
@@ -275,54 +310,22 @@ void DMMotorTask(void *argument)
         float pid_measure, pid_ref;             // 电机PID测量值和设定值
         uint8_t group, num; // 电机组号和组内编号
 
-        for (size_t i = 0; i < 4; ++i)
-        {   
-            motor = dm_motor_instance[i];
-            group = motor->sender_group;
-            if(motor->other_error_flag)
-            {
-                motor_send_mailbox.position_des = float_to_uint(0, DM_P_MIN, DM_P_MAX, 16);
-                motor_send_mailbox.velocity_des = float_to_uint(0, DM_V_MIN, DM_V_MAX, 12);
-                motor_send_mailbox.torque_des   = float_to_uint(0, DM_T_MIN, DM_T_MAX, 12);
-                motor_send_mailbox.Kp = float_to_uint(0, DM_KP_MIN, DM_KP_MAX, 12);
-                motor_send_mailbox.Kd = float_to_uint(0, DM_KD_MIN, DM_KD_MAX, 12); 
-            }
-            else
-            {
-                if (motor->stop_flag == MOTOR_STOP) 
-                {
-                    motor_send_mailbox.position_des = float_to_uint(0, DM_P_MIN, DM_P_MAX, 16);
-                    motor_send_mailbox.velocity_des = float_to_uint(0, DM_V_MIN, DM_V_MAX, 12);
-                    motor_send_mailbox.torque_des   = float_to_uint(0, DM_T_MIN, DM_T_MAX, 12);
-                    motor_send_mailbox.Kp = float_to_uint(0, DM_KP_MIN, DM_KP_MAX, 12);
-                    motor_send_mailbox.Kd = float_to_uint(0, DM_KD_MIN, DM_KD_MAX, 12);            
-                }
-                else 
-                {
-                    motor_send_mailbox.position_des = float_to_uint(motor->motor_controller.angle_PID.Ref, DM_P_MIN, DM_P_MAX, 16);
-                    motor_send_mailbox.velocity_des = float_to_uint(motor->motor_controller.speed_PID.Ref, DM_V_MIN, DM_V_MAX, 12);
-                    motor_send_mailbox.torque_des   = float_to_uint(motor->motor_controller.current_PID.Ref, DM_T_MIN, DM_T_MAX, 12);
-                    motor_send_mailbox.Kp = float_to_uint(motor->motor_controller.angle_PID.Kp, DM_KP_MIN, DM_KP_MAX, 12);
-                    motor_send_mailbox.Kd = float_to_uint(motor->motor_controller.speed_PID.Kd, DM_KD_MIN, DM_KD_MAX, 12);
-                }
-            }
+        for (int i = 0; i < DM_MOTOR_CNT; i++)
+        {
+            DMMotorInstance *motor = dm_motor_instance[i];
+            dmmotor_position_mode(motor);
 
-
-            //设定位置_速度_p_d_力矩
-            dm_sender_assignment[i].tx_buff[0]=(uint8_t)(motor_send_mailbox.position_des >> 8);
-            dm_sender_assignment[i].tx_buff[1] = (uint8_t)(motor_send_mailbox.position_des);
-            dm_sender_assignment[i].tx_buff[2] = (uint8_t)(motor_send_mailbox.velocity_des >> 4);
-            dm_sender_assignment[i].tx_buff[3] = (uint8_t)(((motor_send_mailbox.velocity_des & 0xF) << 4) | (motor_send_mailbox.Kp >> 8));
-            dm_sender_assignment[i].tx_buff[4] = (uint8_t)(motor_send_mailbox.Kp);
-            dm_sender_assignment[i].tx_buff[5] = (uint8_t)(motor_send_mailbox.Kd >> 4);
-            dm_sender_assignment[i].tx_buff[6] = (uint8_t)(((motor_send_mailbox.Kd & 0xF) << 4) | (motor_send_mailbox.torque_des >> 8));
-            dm_sender_assignment[i].tx_buff[7] = (uint8_t)(motor_send_mailbox.torque_des);
-            if(motor->init_flag == 1)
-            {
-                can_transmit(&dm_sender_assignment[i], 1);
-            }
+            // // 根据每个电机的控制模式选择发送函数
+            // if (motor->control_mode == MIT_MODE)
+            // {
+            //     // dmmotor_mit_mode(motor);
+            // }
+            // else if (motor->control_mode == POSITION_MODE)
+            // {
+            //     dmmotor_position_mode(motor);
+            // }
         }
-        osDelay(2);
+        osDelay(1);
     }
 }
 
@@ -333,7 +336,7 @@ const osThreadAttr_t yaw_4310_task_attributes = {
 };
 
 
-void DMMotorControlInit()
+void dmmotor_task_init()
 {
     dm_task_handle = osThreadNew(DMMotorTask, NULL, &yaw_4310_task_attributes);
 

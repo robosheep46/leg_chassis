@@ -43,12 +43,30 @@ typedef struct
 
 typedef struct
 {
+    uint16_t torque_des;
+}dm_motor_send_mit_s;
+
+typedef struct
+{
     uint16_t position_des;
     uint16_t velocity_des;
-    uint16_t torque_des;
-    uint16_t Kp;
-    uint16_t Kd;
-}DMMotor_Send_s;
+}dm_motor_send_position_s;
+
+typedef enum
+{
+    DM_CMD_MOTOR_MODE = 0xfc,   // 使能,会响应指令
+    DM_CMD_RESET_MODE = 0xfd,   // 停止
+    DM_CMD_ZERO_POSITION = 0xfe, // 将当前的位置设置为编码器零位
+    DM_CMD_CLEAR_ERROR = 0xfb, // 清除电机过热错误
+}dm_motor_mit_mode_e;
+
+typedef enum
+{
+    MIT_MODE,
+    POSITION_MODE
+}dm_motor_control_mode_e;
+
+
 typedef struct 
 {
     DM_Motor_Measure_s measure;
@@ -66,28 +84,19 @@ typedef struct
     uint8_t sender_group;
     uint8_t init_flag;
     uint8_t other_error_flag;
+    
+    dm_motor_control_mode_e control_mode;
 }DMMotorInstance;
 
-typedef enum
-{
-    DM_CMD_MOTOR_MODE = 0xfc,   // 使能,会响应指令
-    DM_CMD_RESET_MODE = 0xfd,   // 停止
-    DM_CMD_ZERO_POSITION = 0xfe, // 将当前的位置设置为编码器零位
-    DM_CMD_CLEAR_ERROR = 0xfb // 清除电机过热错误
-}DMMotor_Mode_e;
 
-DMMotorInstance *DMMotorInit(Motor_Init_Config_s *config);
+DMMotorInstance *dmmotor_init(Motor_Init_Config_s *config);
 
-void DMMotorSetPosition(DMMotorInstance *motor, float position);
-void DMMotorSetSpeed(DMMotorInstance *motor, float Speed);
-void DMMotorSetFFTorque(DMMotorInstance *motor, float Torque);
+void dmmotor_set_position(DMMotorInstance *motor, float position,float speed);
+void dmmotor_set_torque(DMMotorInstance *motor, float Torque);
+void dmmotor_enable(DMMotorInstance *motor);
+void dmmotor_stop(DMMotorInstance *motor);
+void dmmotor_cali_encoder(DMMotorInstance *motor);
+void dmmotor_task_init();
+void dmmotor_set_control_mode(DMMotorInstance *motor,dm_motor_control_mode_e mode);
 
-void DMMotorOuterLoop(DMMotorInstance *motor,Closeloop_Type_e closeloop_type);
-void DMMotorSetRef(DMMotorInstance *motor, float ref);
-
-void DMMotorEnable(DMMotorInstance *motor);
-
-void DMMotorStop(DMMotorInstance *motor);
-void DMMotorCaliEncoder(DMMotorInstance *motor);
-void DMMotorControlInit();
 #endif // !DMMOTOR

@@ -115,7 +115,7 @@ static void BasicSet()
     {
         if (switch_is_down((rc_data[TEMP].rc.switch_left)))
         {
-            chassis_cmd_send.chassis_mode  = CHASSIS_ZERO_FORCE;
+            chassis_cmd_send.chassis_mode  = CHASSIS_STAND_UP;
             // chassis_cmd_send.l_target_len -= 0.00009f;
             // chassis_cmd_send.r_target_len -= 0.00009f;
 

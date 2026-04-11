@@ -15,7 +15,7 @@ static CANInstance lk_sender_assignment[2] = {
 
 };
 
-static void MotorSenderGrouping(LKMotorInstance *motor, CAN_Init_Config_s *config)
+static void group_motor(LKMotorInstance *motor, CAN_Init_Config_s *config)
 {
     //直接用->运算符访问电机的成员再进行操作，开销会更多   
     uint8_t motor_send_num;
@@ -95,7 +95,7 @@ LKMotorInstance *LKMotorInit(Motor_Init_Config_s *config)
     config->can_init_config.rx_id = config->can_init_config.tx_id+0x140;
     config->can_init_config.tx_id = config->can_init_config.tx_id+0x140;
     motor->motor_can_ins = can_register(&config->can_init_config);
-    MotorSenderGrouping(motor,config);
+    group_motor(motor,config);
     LKMotorEnable(motor);
     dwt_get_delta_time(&motor->measure.feed_dwt_cnt);
     lkmotor_instance[idx++] = motor;

@@ -10,7 +10,7 @@ static float m2006_init_flag=1;
 
 /**
  * @brief 由于DJI电机发送以四个一组的形式进行,故对其进行特殊处理,用9个(3hfcan*3group)can_instance专门负责发送
- *        该变量将在 DJIMotorControl() 中使用,分组在 MotorSenderGrouping()中进行
+ *        该变量将在 DJIMotorControl() 中使用,分组在 group_motor()中进行
  *
  * @note  因为只用于发送,所以不需要在bsp_can中注册
  *
@@ -32,7 +32,7 @@ static CANInstance sender_assignment[9] = {
 
 /**
  * @brief 6个用于确认是否有电机注册到sender_assignment中的标志位,防止发送空帧,此变量将在DJIMotorControl()使用
- *        flag的初始化在 MotorSenderGrouping()中进行
+ *        flag的初始化在 group_motor()中进行
  */
 static uint8_t sender_enable_flag[9] = {0};
 
@@ -40,7 +40,7 @@ static uint8_t sender_enable_flag[9] = {0};
  * @brief 根据电调/拨码开关上的ID,根据说明书的默认id分配方式计算发送ID和接收ID,
  *        并对电机进行分组以便处理多电机控制命令
  */
-static void MotorSenderGrouping(DJIMotorInstance *motor, CAN_Init_Config_s *config)
+static void group_motor(DJIMotorInstance *motor, CAN_Init_Config_s *config)
 {
     uint8_t motor_id = config->tx_id - 1;
     //直接用->运算符访问电机的成员再进行操作，开销会更多   
@@ -246,7 +246,7 @@ DJIMotorInstance *DJIMotorInit(Motor_Init_Config_s *config)
     instance->motor_controller.current_feedforward_ptr = config->controller_param_init_config.current_feedforward_ptr;
     instance->motor_controller.speed_feedforward_ptr = config->controller_param_init_config.speed_feedforward_ptr;
  
-    MotorSenderGrouping(instance, &config->can_init_config);
+    group_motor(instance, &config->can_init_config);
 
     //can_module_callback是函数指针，所以不用->进行访问，因为他已经规定了函数类型为(CANInstance *)，
     //所以直接等于DecodeDJIMotor即可

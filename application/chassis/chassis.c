@@ -103,10 +103,10 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .motor_type = DM8009};
     r_joint_conf.can_init_config.tx_id =  0x01;
     r_joint_conf.can_init_config.rx_id =  0x11;
-    joint[RF] = joint_rf = DMMotorInit(&r_joint_conf);
+    joint[RF] = joint_rf = dmmotor_init(&r_joint_conf);
     r_joint_conf.can_init_config.tx_id = 0x02;
     r_joint_conf.can_init_config.rx_id = 0x12;
-    joint[RB] = joint_rb = DMMotorInit(&r_joint_conf);
+    joint[RB] = joint_rb = dmmotor_init(&r_joint_conf);
 
     Motor_Init_Config_s l_joint_conf = {
         // 写一个,剩下的修改方向和id即可
@@ -127,10 +127,10 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .motor_type = DM8009};
     l_joint_conf.can_init_config.tx_id = 0x03;
     l_joint_conf.can_init_config.rx_id = 0x13;
-    joint[LB] = joint_lb = DMMotorInit(&l_joint_conf);
+    joint[LB] = joint_lb = dmmotor_init(&l_joint_conf);
     l_joint_conf.can_init_config.tx_id = 0x04;
     l_joint_conf.can_init_config.rx_id = 0x14;
-    joint[LF] = joint_lf = DMMotorInit(&l_joint_conf);
+    joint[LF] = joint_lf = dmmotor_init(&l_joint_conf);
 
 
 // /*******************************LEG_PID_INIT******************************* */
@@ -139,7 +139,7 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .Kp = 700,
         .Kd = 50,
         .Ki = 0,
-        .MaxOut = 60,
+        .MaxOut = 80,
         .DeadBand = 0.0001f,
         .Improve = PID_ChangingIntegrationRate | PID_Trapezoid_Intergral | PID_DerivativeFilter | PID_Derivative_On_Measurement,
         .Derivative_LPF_RC = 0.05,
@@ -150,7 +150,7 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .Kp = 700,
         .Kd = 50,
         .Ki = 0,
-        .MaxOut = 60,
+        .MaxOut = 80,
         .DeadBand = 0.0001f,
         .Improve = PID_ChangingIntegrationRate | PID_Trapezoid_Intergral | PID_DerivativeFilter | PID_Derivative_On_Measurement,
         .Derivative_LPF_RC = 0.05,
@@ -243,7 +243,7 @@ static void set_leg_data()
     
     // DM8009 电机的角度是逆时针为正 ,这里顺时针转是增加角度
     // LK9025 电机的角度是逆时针为正 ，右轮电机速度为正。
-    //大腿 phi1 180  小腿 phi4 0 
+    //大腿 (这个相当于后，由左前电机控制) phi1 180  小腿 phi4 (这个相当于前，由左后电机控制)  0 
     l_side.phi1 = ( 180  + joint_lf->measure.real_total_angle  -40)*PI/180 ;
     l_side.phi1_angle = 180 + joint_lf->measure.real_total_angle -40;
     l_side.phi1_w =  joint_lf->measure.velocity;
@@ -256,7 +256,7 @@ static void set_leg_data()
     l_side.pitch_w =  chassis_imu_data->gyro[0];
 
 
-    //大腿phi4 0  小腿phi1 180
+    //大腿phi4 0 (这个相当于前，由右前电机控制)  小腿phi1 180  (这个相当于后，由右后电机控制)
     r_side.phi1 = (180 + joint_rb->measure.real_total_angle -10) *PI/180;
     r_side.phi1_angle = (180 + joint_rb->measure.real_total_angle  -10);
     r_side.phi1_w =  joint_rb->measure.velocity;
@@ -317,29 +317,52 @@ static void SynthesizeMotion() /* 腿部控制:抗劈叉; 轮子控制:转向 */
 /************************************** leg Control **************************************/
 static void stop_state()
 {
+    dmmotor_stop(joint_lb) ;
+    dmmotor_stop(joint_lf) ;
+    dmmotor_stop(joint_rb) ;
+    dmmotor_stop(joint_rf) ;
     chassis.yaw = chassis_imu_data->yaw_total_angle;
     chassis.target_v = 0;
     chassis.dist = chassis.target_dist = 0;
 
-    l_side.F_leg = 0;
-    r_side.F_leg = 0;
+    l_side.F_leg = 0 ;
+    r_side.F_leg = 0 ;
 
-    l_side.T_hip = 0;
-    r_side.T_hip = 0;
+    l_side.T_hip = 0 ;
+    r_side.T_hip = 0 ;
 
     l_side.T_wheel = 0 ;
     r_side.T_wheel = 0 ;
 }
+
+static void recover_init_state()
+{
+    dmmotor_set_position(joint_lb ,2.19,-0.9) ;
+    dmmotor_set_position(joint_lf ,1.19,-0.9) ;
+    dmmotor_enable(joint_lb) ;
+    dmmotor_enable(joint_lf) ;
+
+    // dmmotor_set_torque(joint_rf, 0)  ; 
+    // dmmotor_set_torque(joint_rb, 0)   ;
+
+    // dmmotor_set_position(joint_rb ,1,0.1) ;
+    // dmmotor_set_position(joint_rf ,1,0.1) ;
+}
+
 static void recover_leg_length()
 {
-    l_side.F_leg = 0 +  PIDCalculate(&leg_len_pid_l, l_side.leg_len, chassis_cmd_recv.l_target_len);
-    r_side.F_leg = 0 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, chassis_cmd_recv.r_target_len);
+    // dmmotor_set_position(joint_lb ,1,0.1);
+    // dmmotor_set_position(joint_lf ,1,0.1);
+    // dmmotor_set_position(joint_rb ,1,0.1);
+    // dmmotor_set_position(joint_rf ,1,0.1);
+}
 
-    l_side.T_hip = 0;//l_side.T_lqr_hip;
-    r_side.T_hip = 0;//r_side.T_lqr_hip;
-
-    l_side.T_wheel = 0 ;
-    r_side.T_wheel = 0 ;
+static void recover_leg_bench()
+{
+    // dmmotor_set_position(joint_lb ,1,0.1);
+    // dmmotor_set_position(joint_lf ,1,0.1);
+    // dmmotor_set_position(joint_rb ,1,0.1);
+    // dmmotor_set_position(joint_rf ,1,0.1);
 }
 
 static void follow_state()
@@ -360,8 +383,8 @@ static void standup_state()
     chassis.target_v = 0;
     chassis.dist = chassis.target_dist = 0;
 
-    l_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_l, l_side.leg_len, chassis_cmd_recv.l_target_len);
-    r_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, chassis_cmd_recv.r_target_len);
+    l_side.F_leg = 5;// 55 +  PIDCalculate(&leg_len_pid_l, l_side.leg_len, chassis_cmd_recv.l_target_len);
+    r_side.F_leg = 5;//55 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, chassis_cmd_recv.r_target_len);
 
     l_side.T_hip = 0.1 * l_side.T_lqr_hip;
     r_side.T_hip = 0.1 * r_side.T_lqr_hip;
@@ -373,10 +396,10 @@ static void standup_state()
 static void balance_state()
 {
     static float roll_extra_comp_p = 200;
-    float roll_comp=0;
+    float roll_comp = 0 ;
     roll_comp = roll_extra_comp_p * chassis.roll;
-    l_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_l, l_side.leg_len, l_side.target_len) + roll_comp;
-    r_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, r_side.target_len) - roll_comp;
+    l_side.F_leg = 5;//PIDCalculate(&leg_len_pid_l, l_side.leg_len, l_side.target_len) + roll_comp;
+    r_side.F_leg = 5;//PIDCalculate(&leg_len_pid_r, r_side.leg_len, r_side.target_len) - roll_comp;
 
     PIDCalculate(&roll_compensate_pid, chassis.roll, 0);
     l_side.target_len = chassis_cmd_recv.l_target_len - roll_compensate_pid.Output;
@@ -386,8 +409,8 @@ static void balance_state()
     l_side.T_motion_hip = anti_crash_pid.Output ;//- swerving_speed_ff;
     r_side.T_motion_hip = anti_crash_pid.Output ;//- swerving_speed_ff;
     
-    l_side.T_hip = l_side.T_lqr_hip + l_side.T_motion_hip;
-    r_side.T_hip = r_side.T_lqr_hip + r_side.T_motion_hip;
+    l_side.T_hip = 0;//l_side.T_lqr_hip + l_side.T_motion_hip;
+    r_side.T_hip = 0;//r_side.T_lqr_hip + r_side.T_motion_hip;
 
     if(fabsf(l_side.real_T_wheel) < 2)
     {
@@ -399,10 +422,28 @@ static void balance_state()
     }
 
     
-    l_side.T_wheel = l_side.T_lqr_wheel - l_side.T_motion_wheel + adaptive_pid_l.Output;
-    r_side.T_wheel = r_side.T_lqr_wheel - r_side.T_motion_wheel + adaptive_pid_r.Output;
+    l_side.T_wheel =0;// l_side.T_lqr_wheel - l_side.T_motion_wheel + adaptive_pid_l.Output;
+    r_side.T_wheel =0;// r_side.T_lqr_wheel - r_side.T_motion_wheel + adaptive_pid_r.Output;
 }
 
+static void set_motor_state()
+{
+    if (chassis_cmd_recv.chassis_mode == CHASSIS_STAND_UP) 
+    {
+        dmmotor_set_control_mode(joint_lb, POSITION_MODE);
+        // dmmotor_set_control_mode(joint_rb, POSITION_MODE);
+        dmmotor_set_control_mode(joint_lf, POSITION_MODE);
+        // dmmotor_set_control_mode(joint_rf, POSITION_MODE);
+    }
+    else
+    {
+        dmmotor_set_control_mode(joint_lb, MIT_MODE);
+        dmmotor_set_control_mode(joint_rb, MIT_MODE);
+        dmmotor_set_control_mode(joint_lf, MIT_MODE);
+        dmmotor_set_control_mode(joint_rf, MIT_MODE);
+    }
+
+}
 static void set_working_state()
 {
     if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE) 
@@ -411,33 +452,19 @@ static void set_working_state()
     }
     else if (chassis_cmd_recv.chassis_mode == CHASSIS_STAND_UP) 
     {
-        if(l_side.leg_len <=0.24 &&r_side.leg_len <=0.24)
-        {
-            if(fabsf(l_side.theta)<0.3&&fabsf(r_side.theta)<0.3)
-            {
-                // balance_state();
-            }
-            else
-            {
-                // standup_state();
-            }
-        }
-        else
-        {
-            recover_leg_length();
-        }
+        // if(l_side.theta > 1|| r_side.theta < -1 || r_side.theta < -1 ||r_side.theta > 1)
+        // {
+            recover_init_state();
+        // }
     }
     else if(chassis_cmd_recv.chassis_mode == CHASSIS_FOLLOW_GIMBAL_YAW)
     {
-        chassis.target_v = chassis_cmd_recv.vx;
-        chassis.target_yaw = chassis_cmd_recv.offset_angle;
-        follow_state();
+        // stop_state();
         balance_state();
     }
     else if (chassis_cmd_recv.chassis_mode == CHASSIS_ROTATE) // 底盘跟随
     {
-        rotate_state();
-        balance_state();
+        stop_state();
     }
 }
 
@@ -452,6 +479,7 @@ void ChassisTask(void *argument)
             
         // 1. 设置工作状态
         set_working_state();
+        set_motor_state();
         // 2. 观测数据
         set_leg_data();
 
@@ -479,32 +507,15 @@ void ChassisTask(void *argument)
         calculate_support_force(&l_side, chassis_imu_data);
         calculate_support_force(&r_side, chassis_imu_data);
 
-        // if(chassis_cmd_recv.chassis_mode == CHASSIS_FOLLOW_GIMBAL_YAW|| chassis_cmd_recv.chassis_mode == CHASSIS_ROTATE)
-        // {
-            // LKMotorSetRef(driven_r, 0)   ;
-            // LKMotorSetRef(driven_l, 0)   ;
-            // DMMotorSetFFTorque(joint_lb, 0)  ;
-            // DMMotorSetFFTorque(joint_lf, 0)  ;
-            // DMMotorSetFFTorque(joint_rf, 0)  ; 
-            // DMMotorSetFFTorque(rb, 0)  ;
-
-            LKMotorSetRef(driven_l,l_side.T_wheel*124.12);
-            LKMotorSetRef(driven_r,r_side.T_wheel*124.12);
-
-            DMMotorSetFFTorque(joint_lb, l_side.T_front )  ;
-            DMMotorSetFFTorque(joint_lf, l_side.T_back ) ;
-            DMMotorSetFFTorque(joint_rf, r_side.T_front )  ; 
-            DMMotorSetFFTorque(joint_rb, r_side.T_back)  ;
-        // }
-        // else
-        // {
-            // LKMotorSetRef(driven_r, 0)   ;
-            // LKMotorSetRef(driven_l, 0)   ;
-            // DMMotorSetFFTorque(joint_lb, 0) ;
-            // DMMotorSetFFTorque(joint_lf, 0) ;
-            // DMMotorSetFFTorque(joint_rf, 0 ) ; 
-            // DMMotorSetFFTorque(joint_rb, 0)  ;
-        // }
+        LKMotorSetRef(driven_l,l_side.T_wheel*124.12);
+        LKMotorSetRef(driven_r,r_side.T_wheel*124.12);
+        if(chassis_cmd_recv.chassis_mode != CHASSIS_STAND_UP)
+        {
+            dmmotor_set_torque(joint_lb, l_side.T_front)  ;
+            dmmotor_set_torque(joint_lf, l_side.T_back )  ;
+            dmmotor_set_torque(joint_rf, r_side.T_front)  ; 
+            dmmotor_set_torque(joint_rb, r_side.T_back)   ;
+        }
         osDelay(1);
     }
 }
