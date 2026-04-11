@@ -10,7 +10,7 @@ void set_right_leg_six_states(LegParam *leg, ChassisParam *chassis);
 
 
 void calculate_leg_torgue(LegParam * leg);
-void calculate_wheel_torgue(LegParam *leg, ChassisParam *chassis);
+void calculate_wheel_torgue(LegParam *l_leg,LegParam *r_leg, ChassisParam *chassis);
 
 
 void calculate_support_force(LegParam *leg, attitude_t *imu);

@@ -92,11 +92,11 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .controller_param_init_config = {
             .angle_PID=
             {
-                .Kp = 0 //100,// .Kp=60,
+                .Kp = 60 //100,// .Kp=60,
             },
             .speed_PID  =
             {
-                .Kd = 0// 0.5 // .Kd=0.5,
+                .Kd = 0.5// 0.5 // .Kd=0.5,
             },
         },
         .mit_flag = 1, 
@@ -116,11 +116,11 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .controller_param_init_config = {
             .angle_PID=
             {
-                .Kp= 0 //80, //角度/60,
+                .Kp= 60 //80, //角度/60,
             },
             .speed_PID = 
             {
-                .Kd =0// 0.5,   //角度/0.5,
+                .Kd =0.5// 0.5,   //角度/0.5,
             },
         },
         .mit_flag = 1, 
@@ -244,31 +244,51 @@ static void set_leg_data()
     // DM8009 电机的角度是逆时针为正 ,这里顺时针转是增加角度
     // LK9025 电机的角度是逆时针为正 ，右轮电机速度为正。
     //大腿 phi1 180  小腿 phi4 0 
-    l_side.phi1 = ( 180  + joint_lf->measure.real_total_angle  -40)*PI/180 ;
-    l_side.phi1_angle = 180 + joint_lf->measure.real_total_angle -40;
-    l_side.phi1_w =  joint_lf->measure.velocity;
-    l_side.phi4 = (  0 +  joint_lb->measure.real_total_angle )*PI/180 ;
-    l_side.phi4_angle = 0 + joint_lb->measure.real_total_angle ;
-    l_side.phi4_w =   joint_lb->measure.velocity;
+
+    l_side.phi1 =  180;
+    l_side.phi1_angle = 180 ;// + joint_lf->measure.real_total_angle -40;
+    l_side.phi1_w = 0;// joint_lf->measure.velocity;
+    l_side.phi4 =0;// (  0 +  joint_lb->measure.real_total_angle )*PI/180 ;
+    l_side.phi4_angle = 0;// + joint_lb->measure.real_total_angle ;
+    l_side.phi4_w = 0;//  joint_lb->measure.velocity;
 
     l_side.w_ecd = driven_l->measure.speed_rads;
     l_side.pitch   =  chassis_imu_data->pitch * DEGREE_2_RAD;
     l_side.pitch_w =  chassis_imu_data->gyro[0];
 
 
-    //大腿phi4 0  小腿phi1 180
-    r_side.phi1 = (180 + joint_rb->measure.real_total_angle -10) *PI/180;
-    r_side.phi1_angle = (180 + joint_rb->measure.real_total_angle  -10);
-    r_side.phi1_w =  joint_rb->measure.velocity;
-    r_side.phi4 = ( 0 + joint_rf->measure.real_total_angle ) *PI/180;
-    r_side.phi4_angle = ( 0  + joint_rf->measure.real_total_angle );
-    r_side.phi4_w =   joint_rf->measure.velocity;
-
-    // LK9025电机顺时针为负 +
+    // //大腿phi4 0  小腿phi1 180
+    r_side.phi1 = 180;//(180 + joint_rb->measure.real_total_angle -10) *PI/180;
+    r_side.phi1_angle = 180;//(180 + joint_rb->measure.real_total_angle  -10);
+    r_side.phi1_w =  0;//joint_rb->measure.velocity;
+    r_side.phi4 =0;// ( 0 + joint_rf->measure.real_total_angle ) *PI/180;
+    r_side.phi4_angle = 0;//( 0  + joint_rf->measure.real_total_angle );
+    r_side.phi4_w =   0;//joint_rf->measure.velocity;
     r_side.w_ecd = driven_r->measure.speed_rads;
-    
     r_side.pitch   = -(chassis_imu_data->pitch ) * DEGREE_2_RAD;
     r_side.pitch_w = -chassis_imu_data->gyro[0];
+    // l_side.phi1 = ( 180  + joint_lf->measure.real_total_angle  -40)*PI/180 ;
+    // l_side.phi1_angle = 180 + joint_lf->measure.real_total_angle -40;
+    // l_side.phi1_w =  joint_lf->measure.velocity;
+    // l_side.phi4 = (  0 +  joint_lb->measure.real_total_angle )*PI/180 ;
+    // l_side.phi4_angle = 0 + joint_lb->measure.real_total_angle ;
+    // l_side.phi4_w =   joint_lb->measure.velocity;
+
+    // l_side.w_ecd = driven_l->measure.speed_rads;
+    // l_side.pitch   =  chassis_imu_data->pitch * DEGREE_2_RAD;
+    // l_side.pitch_w =  chassis_imu_data->gyro[0];
+
+
+    // //大腿phi4 0  小腿phi1 180
+    // r_side.phi1 = (180 + joint_rb->measure.real_total_angle -10) *PI/180;
+    // r_side.phi1_angle = (180 + joint_rb->measure.real_total_angle  -10);
+    // r_side.phi1_w =  joint_rb->measure.velocity;
+    // r_side.phi4 = ( 0 + joint_rf->measure.real_total_angle ) *PI/180;
+    // r_side.phi4_angle = ( 0  + joint_rf->measure.real_total_angle );
+    // r_side.phi4_w =   joint_rf->measure.velocity;
+
+    // LK9025电机顺时针为负 +
+
 }
 
 
@@ -399,10 +419,32 @@ static void balance_state()
     }
 
     
-    l_side.T_wheel = l_side.T_lqr_wheel - l_side.T_motion_wheel + adaptive_pid_l.Output;
-    r_side.T_wheel = r_side.T_lqr_wheel - r_side.T_motion_wheel + adaptive_pid_r.Output;
+    l_side.T_wheel = l_side.T_lqr_wheel; //- l_side.T_motion_wheel + adaptive_pid_l.Output;
+    r_side.T_wheel = r_side.T_lqr_wheel; //- r_side.T_motion_wheel + adaptive_pid_r.Output;
 }
 
+// 力矩范围
+#define TORQUE_MIN   -1.0f
+#define TORQUE_MAX    1.0f
+#define TORQUE_STEP    0.0005f
+
+// 用于保存当前方向的状态：1表示上升，-1表示下降
+static int direction = 1;
+
+// 每次调用此函数，更新一次力矩值
+void update_torque_signal(void) {
+    // 步进
+    l_side.T_wheel += direction * TORQUE_STEP;
+
+    // 边界检查并反转方向
+    if (l_side.T_wheel >= TORQUE_MAX) {
+        l_side.T_wheel = TORQUE_MAX;
+        direction = -1;          // 到达上限，改为下降
+    } else if (l_side.T_wheel <= TORQUE_MIN) {
+        l_side.T_wheel = TORQUE_MIN;
+        direction = 1;           // 到达下限，改为上升
+    }
+}
 static void set_working_state()
 {
     if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE) 
@@ -411,33 +453,36 @@ static void set_working_state()
     }
     else if (chassis_cmd_recv.chassis_mode == CHASSIS_STAND_UP) 
     {
-        if(l_side.leg_len <=0.24 &&r_side.leg_len <=0.24)
-        {
-            if(fabsf(l_side.theta)<0.3&&fabsf(r_side.theta)<0.3)
-            {
-                // balance_state();
-            }
-            else
-            {
-                // standup_state();
-            }
-        }
-        else
-        {
-            recover_leg_length();
-        }
+        l_side.T_wheel = l_side.T_lqr_wheel; //- l_side.T_motion_wheel + adaptive_pid_l.Output;
+        r_side.T_wheel = r_side.T_lqr_wheel; //- r_side.T_motion_wheel + adaptive_pid_r.Output;
+        // update_torque_signal();
+        // if(l_side.leg_len <=0.24 &&r_side.leg_len <=0.24)
+        // {
+        //     if(fabsf(l_side.theta)<0.3&&fabsf(r_side.theta)<0.3)
+        //     {
+        //         // balance_state();
+        //     }
+        //     else
+        //     {
+        //         // standup_state();
+        //     }
+        // }
+        // else
+        // {
+        //     recover_leg_length();
+        // }
     }
     else if(chassis_cmd_recv.chassis_mode == CHASSIS_FOLLOW_GIMBAL_YAW)
     {
-        chassis.target_v = chassis_cmd_recv.vx;
-        chassis.target_yaw = chassis_cmd_recv.offset_angle;
-        follow_state();
-        balance_state();
+        // chassis.target_v = chassis_cmd_recv.vx;
+        // chassis.target_yaw = chassis_cmd_recv.offset_angle;
+        // follow_state();
+        // balance_state();
     }
     else if (chassis_cmd_recv.chassis_mode == CHASSIS_ROTATE) // 底盘跟随
     {
-        rotate_state();
-        balance_state();
+        // rotate_state();
+        // balance_state();
     }
 }
 
@@ -468,8 +513,7 @@ void ChassisTask(void *argument)
         set_left_leg_six_states(&l_side, &chassis)  ;
         set_right_leg_six_states(&r_side, &chassis) ;
 
-        calculate_wheel_torgue(&l_side,  &chassis);
-        calculate_wheel_torgue(&r_side, &chassis);
+        calculate_wheel_torgue(&l_side,&r_side,  &chassis);
 
         calculate_leg_torgue(&l_side);
         calculate_leg_torgue(&r_side);
@@ -488,13 +532,13 @@ void ChassisTask(void *argument)
             // DMMotorSetFFTorque(joint_rf, 0)  ; 
             // DMMotorSetFFTorque(rb, 0)  ;
 
-            LKMotorSetRef(driven_l,l_side.T_wheel*124.12);
-            LKMotorSetRef(driven_r,r_side.T_wheel*124.12);
+            LKMotorSetRef(driven_l,l_side.T_wheel*195.325);
+            LKMotorSetRef(driven_r,r_side.T_wheel*195.325);
 
-            DMMotorSetFFTorque(joint_lb, l_side.T_front )  ;
-            DMMotorSetFFTorque(joint_lf, l_side.T_back ) ;
-            DMMotorSetFFTorque(joint_rf, r_side.T_front )  ; 
-            DMMotorSetFFTorque(joint_rb, r_side.T_back)  ;
+            // DMMotorSetFFTorque(joint_lb, l_side.T_front )  ;
+            // DMMotorSetFFTorque(joint_lf, l_side.T_back ) ;
+            // DMMotorSetFFTorque(joint_rf, r_side.T_front )  ; 
+            // DMMotorSetFFTorque(joint_rb, r_side.T_back)  ;
         // }
         // else
         // {

@@ -53,10 +53,17 @@ function K = get_k_length(leg_length)
     B=double(B);
     
 
-    Q=diag([700 1 500 100 20000 1]);%theta d_theta x d_x phi d_phi%700 1 600 100 20000 1
-    R=[220 0;0 30];                %T Tp [220 0;0 30]
+    Q=diag([1 1 1 1 20000 1]);%theta d_theta x d_x phi d_phi%700 1 600 100 20000 1
+    R=[30 0;0 1000];                %T Tp [220 0;0 30]
     
     
     K=lqr(A,B,Q,R);
-  
+      % 可控性检查
+    Co = ctrb(A, B);
+    rank_Co = rank(Co);
+    if rank_Co == size(A,1)
+        disp('系统完全可控（满秩）');
+    else
+        warning('系统不完全可控，当前秩 = %d (应为 %d)', rank_Co, size(A,1));
+    end
 end

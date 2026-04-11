@@ -67,8 +67,10 @@ typedef struct {
     
     //lqr
     float T_lqr_theta_wheel;
-    float T_lqr_theta_hip;
+    float T_lqr_yaw_wheel;
 
+    float T_lqr_theta_hip;
+    float T_lqr_yaw_hip;
     float T_lqr_dist_wheel;
     float T_lqr_dist_hip;
 
@@ -95,8 +97,8 @@ typedef struct {
     float real_T_back, real_T_front;
     float w_ecd;
     float pitch ,pitch_w;
-    float wheel_state[6];
-    float leg_state[6];
+    float wheel_state[8];
+    float leg_state[8];
 
     uint8_t first_flag;
 } LegParam;

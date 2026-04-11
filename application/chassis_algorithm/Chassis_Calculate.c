@@ -62,82 +62,102 @@ void calculate_leg_theta_w(LegParam * leg,ChassisParam *chassis)
 
 void set_left_leg_six_states(LegParam *leg, ChassisParam *chassis)
 {
-        leg->wheel_state[0] =  leg->theta - (0)                   ;        // 腿部角度偏差
-        leg->wheel_state[1] =  leg->theta_w - 0                 ;        // 腿部角速度偏差
-        leg->wheel_state[2] =  -chassis->dist - 0               ;        // 机体位移偏差
-        leg->wheel_state[3] =  -chassis->vel + chassis->target_v;   // 机体速度偏差
-        leg->wheel_state[4] =  leg->pitch                       ;        // 机体俯仰角偏差
-        leg->wheel_state[5] =  leg->pitch_w                     ;        // 机体俯仰角速度偏差
-    
-        leg->leg_state[0]   =  leg->theta - (0)                   ;        // 腿部角度偏差
-        leg->leg_state[1]   =  leg->theta_w - 0                 ;        // 腿部角速度偏差
-        leg->leg_state[2]   =  - chassis->dist - 0                ;        // 机体位移偏差
-        leg->leg_state[3]   =  - chassis->vel + chassis->target_v ;        // 机体速度偏差
-        leg->leg_state[4]   =  leg->pitch                       ;        // 机体俯仰角偏差
-        leg->leg_state[5]   =  leg->pitch_w                     ;        // 机体俯仰角速度偏差
+        leg->wheel_state[0] =  -chassis->dist - 0               ;        // 机体位移偏差
+        leg->wheel_state[1] =  -chassis->vel + chassis->target_v;   // 机体速度偏差
+        leg->wheel_state[2]   =  chassis->yaw                     ;        // 机体俯仰角偏差
+        leg->wheel_state[3]   =  chassis->yaw_w                   ;        // 机体俯仰角速度偏差
+        leg->wheel_state[4] =  leg->theta - (0)                   ;        // 腿部角度偏差
+        leg->wheel_state[5] =  leg->theta_w - 0                 ;        // 腿部角速度偏差
+        leg->wheel_state[6] =  leg->pitch                       ;        // 机体俯仰角偏差
+        leg->wheel_state[7] =  leg->pitch_w                     ;        // 机体俯仰角速度偏差
+
+        leg->leg_state[0]   =  - chassis->dist - 0                ;        // 机体位移偏差
+        leg->leg_state[1]   =  - chassis->vel + chassis->target_v ;        // 机体速度偏差
+        leg->leg_state[2]   =  chassis->yaw                     ;        // 机体俯仰角偏差
+        leg->leg_state[3]   =  chassis->yaw_w                   ;        // 机体俯仰角速度偏差
+        leg->leg_state[4]   =  leg->theta - (0)                   ;        // 腿部角度偏差
+        leg->leg_state[5]   =  leg->theta_w - 0                 ;        // 腿部角速度偏差
+        leg->leg_state[6]   =  leg->pitch                       ;        // 机体俯仰角偏差
+        leg->leg_state[7]   =  leg->pitch_w                     ;        // 机体俯仰角速度偏差
+
 }
 
 void set_right_leg_six_states(LegParam *leg, ChassisParam *chassis)
 {
-    leg->wheel_state[0] =  leg->theta + 0                  ;        // 腿部角度偏差
-    leg->wheel_state[1] =  leg->theta_w - 0                 ;        // 腿部角速度偏差
-    leg->wheel_state[2] =  chassis->dist - 0                ;        // 机体位移偏差
-    leg->wheel_state[3] =  chassis->vel - chassis->target_v ;        // 机体速度偏差
-    leg->wheel_state[4] =  leg->pitch                       ;        // 机体俯仰角偏差
-    leg->wheel_state[5] =  leg->pitch_w                     ;        // 机体俯仰角速度偏差
 
-    leg->leg_state[0]   =  leg->theta + 0                   ;        // 腿部角度偏差
-    leg->leg_state[1]   =  leg->theta_w - 0                 ;        // 腿部角速度偏差
-    leg->leg_state[2]   =  chassis->dist - 0                ;        // 机体位移偏差
-    leg->leg_state[3]   =  chassis->vel - chassis->target_v ;        // 机体速度偏差
-    leg->leg_state[4]   =  leg->pitch                       ;        // 机体俯仰角偏差
-    leg->leg_state[5]   =  leg->pitch_w                     ;        // 机体俯仰角速度偏差
+    leg->wheel_state[0] =  chassis->dist - 0                ;        // 机体位移偏差
+    leg->wheel_state[1] =  chassis->vel - chassis->target_v ;        // 机体速度偏差
+    leg->wheel_state[2] =  -chassis->yaw                     ;        // 机体俯仰角偏差
+    leg->wheel_state[3] =  -chassis->yaw_w                   ;        // 机体俯仰角速度偏差
+    leg->wheel_state[4] =  leg->theta + 0                  ;        // 腿部角度偏差
+    leg->wheel_state[5] =  leg->theta_w - 0                 ;        // 腿部角速度偏差
+    leg->wheel_state[6] =  leg->pitch                       ;        // 机体俯仰角偏差
+    leg->wheel_state[7] =  leg->pitch_w                     ;        // 机体俯仰角速度偏差
+
+    leg->leg_state[0]   =  chassis->dist - 0                ;        // 机体位移偏差
+    leg->leg_state[1]   =  chassis->vel - chassis->target_v ;        // 机体速度偏差
+    leg->leg_state[2]   =  - chassis->yaw                     ;        // 机体俯仰角偏差
+    leg->leg_state[3]   =  - chassis->yaw_w                   ;        // 机体俯仰角速度偏差
+    leg->leg_state[4]   =  leg->theta + 0                   ;        // 腿部角度偏差
+    leg->leg_state[5]   =  leg->theta_w - 0                 ;        // 腿部角速度偏差
+    leg->wheel_state[6] =  leg->pitch                       ;        // 机体俯仰角偏差
+    leg->wheel_state[7] =  leg->pitch_w                     ;        // 机体俯仰角速度偏差
+
 }
 
-void calculate_wheel_torgue(LegParam *leg, ChassisParam *chassis)
+void calculate_wheel_torgue(LegParam *l_leg,LegParam *r_leg, ChassisParam *chassis)
 {
-    static float k[2][6];
-    float t1 = leg->leg_len;
-    float t2 = leg->leg_len * leg->leg_len; 
-    float t3 = leg->leg_len * leg->leg_len * leg->leg_len;
+        static float k[2][10]=
+        {
+            -1.2195,  -5.9618,  -133.77,  -17.545,  -51.446,  -2.7782,  -18.6,  -1.072,  22.369,  0.10979
+            -1.1216,  -5.4856,  157.75,  20.728,  -25.08,  -1.3408,  -40.385,  -2.3439,  19.564,  0.027888
+            -0.37342,  -1.8308,  -20.889,  -3.3057,  19.142,  0.63857,  -21.444,  -1.6335,  -65.065,  -3.2945
+            -0.26402,  -1.291,  20.828,  3.3317,  -18.581,  -1.3211,  22.308,  1.012,  -66.607,  -3.3623
+        };
 
-    // k[0][0] = -276.9355f*t3 + 318.5072f*t2-147.7479f*t1 + 0.3148f;
-    // k[0][1] = -1.7898f*t3 + 5.1048f*t2-9.6011f*t1 + 0.2912f;
-    // k[0][2] = -27.9394f*t3 + 28.0033f*t2-9.7795f*t1-0.2503f;
-    // k[0][3] = -42.4398f*t3 + 42.7436f*t2-15.3926f*t1-0.4394f;
-    // k[0][4] = -37.8587f*t3 + 59.4502f*t2-36.3017f*t1 + 10.6018f;
-    // k[0][5] = -4.2180f*t3 + 8.4305f*t2-6.0094f*t1 + 2.0718f;
-    // k[1][0] = 282.0810f*t3-242.2992f*t2 + 55.0414f*t1 + 9.4673f;
-    // k[1][1] = 24.7783f*t3-24.8609f*t2 + 7.9582f*t1 + 0.1660f;
-    // k[1][2] = -21.4404f*t3 + 27.8204f*t2-14.0966f*t1 + 3.2074f;
-    // k[1][3] = -31.8560f*t3 + 41.5448f*t2-21.2111f*t1 + 4.8747f;
-    // k[1][4] = 289.2883f*t3-296.0413f*t2 + 107.4000f*t1-0.7643f;
-    // k[1][5] = 55.9790f*t3-57.8950f*t2 + 21.3992f*t1-0.4533f;
-
-
-    k[0][0] = -235.2595f*t3 + 295.1793f*t2-148.9802f*t1 + 2.0855f;
-    k[0][1] = -2.4243f*t3 + 5.9780f*t2-10.1715f*t1 + 0.4737f;
-    k[0][2] = -27.3838f*t3 + 30.3729f*t2-11.9484f*t1 + 0.2543f;
-    k[0][3] = -41.9456f*t3 + 46.7533f*t2-18.8728f*t1 + 0.3557f;
-    k[0][4] = -27.6803f*t3 + 62.7097f*t2-48.4282f*t1 + 16.2729f;
-    k[0][5] = 1.4695f*t3 + 3.2005f*t2-4.9376f*t1 + 2.3391f;
-    k[1][0] = 344.1201f*t3-305.0214f*t2 + 61.5680f*t1 + 18.9281f;
-    k[1][1] = 38.2170f*t3-40.8577f*t2 + 13.8696f*t1 + 0.3410f;
-    k[1][2] = -17.5580f*t3 + 29.9126f*t2-19.3084f*t1 + 5.4707f;
-    k[1][3] = -26.5630f*t3 + 45.3515f*t2-29.4317f*t1 + 8.4740f;
-    k[1][4] = 597.0094f*t3-669.7849f*t2 + 268.6583f*t1-10.4746f;
-    k[1][5] = 83.6325f*t3-95.8162f*t2 + 39.7359f*t1-2.5811f;
+        l_leg->T_lqr_dist_wheel  = k[0][0] * l_leg->wheel_state[0] + k[0][1] * l_leg->wheel_state[1];
+        l_leg->T_lqr_yaw_wheel   = k[0][2] * l_leg->wheel_state[2] + k[0][3] * l_leg->wheel_state[3];
+        l_leg->T_lqr_theta_wheel = k[0][4] * l_leg->wheel_state[4] + k[0][5] * l_leg->wheel_state[5];
+        l_leg->T_lqr_pitch_wheel = k[0][8] * l_leg->wheel_state[6] + k[0][9] * l_leg->wheel_state[7];
     
-    leg->T_lqr_theta_wheel = k[0][0] * leg->wheel_state[0] + k[0][1] * leg->wheel_state[1];
-    leg->T_lqr_dist_wheel  = k[0][2] * leg->wheel_state[2] + k[0][3] * leg->wheel_state[3];
-    leg->T_lqr_pitch_wheel = k[0][4] * leg->wheel_state[4] + k[0][5] * leg->wheel_state[5];
+        l_leg->T_lqr_dist_hip  = k[1][0] * l_leg->leg_state[0] + k[1][1] * l_leg->leg_state[1];
+        l_leg->T_lqr_yaw_hip   = k[1][2] * l_leg->leg_state[2] + k[1][3] * l_leg->leg_state[3];
+        l_leg->T_lqr_theta_hip = k[1][4] * l_leg->leg_state[4] + k[1][5] * l_leg->leg_state[5];
+        l_leg->T_lqr_pitch_hip = k[1][8] * l_leg->leg_state[6] + k[1][9] * l_leg->leg_state[7];
+    
+        r_leg->T_lqr_dist_wheel  = k[0][0] * r_leg->wheel_state[0] + k[0][1] * r_leg->wheel_state[1];
+        r_leg->T_lqr_yaw_wheel   = k[0][2] * r_leg->wheel_state[2] + k[0][3] * r_leg->wheel_state[3];
+        r_leg->T_lqr_theta_wheel = k[0][6] * r_leg->wheel_state[4] + k[0][7] * r_leg->wheel_state[5];
+        r_leg->T_lqr_pitch_wheel = k[0][8] * r_leg->wheel_state[6] + k[0][9] * r_leg->wheel_state[7];
+    
+        r_leg->T_lqr_dist_hip  = k[1][0] * r_leg->leg_state[0] + k[1][1] * r_leg->leg_state[1];
+        r_leg->T_lqr_yaw_hip   = k[1][2] * r_leg->leg_state[2] + k[1][3] * r_leg->leg_state[3];
+        r_leg->T_lqr_theta_hip = k[1][6] * r_leg->leg_state[4] + k[1][7] * r_leg->leg_state[5]; // 注意右腿可能用不同索引
+        r_leg->T_lqr_pitch_hip = k[1][8] * r_leg->leg_state[6] + k[1][9] * r_leg->leg_state[7];
 
-    leg->T_lqr_theta_hip   = k[1][0] * leg->leg_state[0] + k[1][1] * leg->leg_state[1];
-    leg->T_lqr_dist_hip    = k[1][2] * leg->leg_state[2] + k[1][3] * leg->leg_state[3];
-    leg->T_lqr_pitch_hip   = k[1][4] * leg->leg_state[4] + k[1][5] * leg->leg_state[5];
+        l_leg->T_lqr_wheel =
+                        // l_leg->T_lqr_dist_wheel 
+                           + l_leg->T_lqr_yaw_wheel 
+                        //    + l_leg->T_lqr_theta_wheel 
+                           + l_leg->T_lqr_pitch_wheel ;
 
-    leg->T_lqr_wheel = leg->T_lqr_theta_wheel + leg->T_lqr_dist_wheel + leg->T_lqr_pitch_wheel ;
-    leg->T_lqr_hip   = leg->T_lqr_theta_hip   + leg->T_lqr_dist_hip   + leg->T_lqr_pitch_hip   ;
+        l_leg->T_lqr_hip   = 0;
+                        //      l_leg->T_lqr_dist_hip ;
+                        //    + l_leg->T_lqr_yaw_hip 
+                        //    + l_leg->T_lqr_theta_hip 
+                        //    + l_leg->T_lqr_pitch_hip;
+    
+        r_leg->T_lqr_wheel =
+                        // r_leg->T_lqr_dist_wheel 
+                           + r_leg->T_lqr_yaw_wheel 
+                        //    + r_leg->T_lqr_theta_wheel 
+                           + r_leg->T_lqr_pitch_wheel ;    
+
+        r_leg->T_lqr_hip   =0;// r_leg->T_lqr_dist_hip ;
+                        //    + r_leg->T_lqr_yaw_hip 
+                        //    + r_leg->T_lqr_theta_hip 
+                        //    + r_leg->T_lqr_pitch_hip;
+    
 }
 
 
