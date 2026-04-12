@@ -27,5 +27,5 @@ void RobotInit()
     ChassisInit(&chassis_queues);
     ChassisCMDInit(&cmd_queues);
     MotorTaskInit();
-    DMMotorControlInit();
+    dmmotor_task_init();
 }

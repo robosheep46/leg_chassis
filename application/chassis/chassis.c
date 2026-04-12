@@ -103,10 +103,10 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .motor_type = DM8009};
     r_joint_conf.can_init_config.tx_id =  0x01;
     r_joint_conf.can_init_config.rx_id =  0x11;
-    joint[RF] = joint_rf = DMMotorInit(&r_joint_conf);
+    joint[RF] = joint_rf = dmmotor_init(&r_joint_conf);
     r_joint_conf.can_init_config.tx_id = 0x02;
     r_joint_conf.can_init_config.rx_id = 0x12;
-    joint[RB] = joint_rb = DMMotorInit(&r_joint_conf);
+    joint[RB] = joint_rb = dmmotor_init(&r_joint_conf);
 
     Motor_Init_Config_s l_joint_conf = {
         // 写一个,剩下的修改方向和id即可
@@ -127,10 +127,10 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
         .motor_type = DM8009};
     l_joint_conf.can_init_config.tx_id = 0x03;
     l_joint_conf.can_init_config.rx_id = 0x13;
-    joint[LB] = joint_lb = DMMotorInit(&l_joint_conf);
+    joint[LB] = joint_lb = dmmotor_init(&l_joint_conf);
     l_joint_conf.can_init_config.tx_id = 0x04;
     l_joint_conf.can_init_config.rx_id = 0x14;
-    joint[LF] = joint_lf = DMMotorInit(&l_joint_conf);
+    joint[LF] = joint_lf = dmmotor_init(&l_joint_conf);
 
 
 // /*******************************LEG_PID_INIT******************************* */
@@ -211,7 +211,7 @@ void ChassisInit(ChassisQueues_t *chassis_queue)
     PID_Init_Config_s adaptive_pid_conf = {
         .Kp = 0,
         .Kd = 0,
-        .Ki = 0.3,
+        .Ki = 0.003,
         .MaxOut = 40,
         .IntegralLimit = 20,
         .Improve = PID_DerivativeFilter | PID_Derivative_On_Measurement | PID_Integral_Limit,
@@ -244,11 +244,11 @@ static void set_leg_data()
     // DM8009 电机的角度是逆时针为正 ,这里顺时针转是增加角度
     // LK9025 电机的角度是逆时针为正 ，右轮电机速度为正。
     //大腿 phi1 180  小腿 phi4 0 
-    l_side.phi1 = ( 180  + joint_lf->measure.real_total_angle  -40)*PI/180 ;
-    l_side.phi1_angle = 180 + joint_lf->measure.real_total_angle -40;
+    l_side.phi1 = ( 180  + joint_lf->measure.real_total_angle  )*PI/180 ;
+    l_side.phi1_angle = 180 + joint_lf->measure.real_total_angle ;
     l_side.phi1_w =  joint_lf->measure.velocity;
-    l_side.phi4 = (  0 +  joint_lb->measure.real_total_angle )*PI/180 ;
-    l_side.phi4_angle = 0 + joint_lb->measure.real_total_angle ;
+    l_side.phi4 = (  0 +  joint_lb->measure.real_total_angle +20)*PI/180 ;
+    l_side.phi4_angle = 0 + joint_lb->measure.real_total_angle+20 ;
     l_side.phi4_w =   joint_lb->measure.velocity;
 
     l_side.w_ecd = driven_l->measure.speed_rads;
@@ -257,11 +257,11 @@ static void set_leg_data()
 
 
     //大腿phi4 0  小腿phi1 180
-    r_side.phi1 = (180 + joint_rb->measure.real_total_angle -10) *PI/180;
-    r_side.phi1_angle = (180 + joint_rb->measure.real_total_angle  -10);
+    r_side.phi1 = (180 + joint_rb->measure.real_total_angle -18) *PI/180;
+    r_side.phi1_angle = (180 + joint_rb->measure.real_total_angle  -18);
     r_side.phi1_w =  joint_rb->measure.velocity;
-    r_side.phi4 = ( 0 + joint_rf->measure.real_total_angle ) *PI/180;
-    r_side.phi4_angle = ( 0  + joint_rf->measure.real_total_angle );
+    r_side.phi4 = ( 0 + joint_rf->measure.real_total_angle +5) *PI/180;
+    r_side.phi4_angle = ( 0  + joint_rf->measure.real_total_angle +5);
     r_side.phi4_w =   joint_rf->measure.velocity;
 
     // LK9025电机顺时针为负 +
@@ -373,7 +373,7 @@ static void standup_state()
 static void balance_state()
 {
     static float roll_extra_comp_p = 200;
-    float roll_comp=0;
+    float roll_comp = 0;
     roll_comp = roll_extra_comp_p * chassis.roll;
     l_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_l, l_side.leg_len, l_side.target_len) + roll_comp;
     r_side.F_leg = 50 +  PIDCalculate(&leg_len_pid_r, r_side.leg_len, r_side.target_len) - roll_comp;
@@ -391,16 +391,16 @@ static void balance_state()
 
     if(fabsf(l_side.real_T_wheel) < 2)
     {
-        PIDCalculate(&adaptive_pid_l, l_side.wheel_state[3], 0);
+        PIDCalculate(&adaptive_pid_l, l_side.wheel_state[2], 0);
     }
     if(fabsf(r_side.real_T_wheel) < 2)
     {
-        PIDCalculate(&adaptive_pid_r, r_side.wheel_state[3], 0);
+        PIDCalculate(&adaptive_pid_r, r_side.wheel_state[2], 0);
     }
 
     
-    l_side.T_wheel = l_side.T_lqr_wheel - l_side.T_motion_wheel + adaptive_pid_l.Output;
-    r_side.T_wheel = r_side.T_lqr_wheel - r_side.T_motion_wheel + adaptive_pid_r.Output;
+    l_side.T_wheel = l_side.T_lqr_wheel - l_side.T_motion_wheel; //+ adaptive_pid_l.Output;
+    r_side.T_wheel = r_side.T_lqr_wheel - r_side.T_motion_wheel;// + adaptive_pid_r.Output;
 }
 
 static void set_working_state()
@@ -483,27 +483,27 @@ void ChassisTask(void *argument)
         // {
             // LKMotorSetRef(driven_r, 0)   ;
             // LKMotorSetRef(driven_l, 0)   ;
-            // DMMotorSetFFTorque(joint_lb, 0)  ;
-            // DMMotorSetFFTorque(joint_lf, 0)  ;
-            // DMMotorSetFFTorque(joint_rf, 0)  ; 
-            // DMMotorSetFFTorque(rb, 0)  ;
+            // dmmotor_set_torque(joint_lb, 0)  ;
+            // dmmotor_set_torque(joint_lf, 0)  ;
+            // dmmotor_set_torque(joint_rf, 0)  ; 
+            // dmmotor_set_torque(rb, 0)  ;
 
-            LKMotorSetRef(driven_l,l_side.T_wheel*124.12);
-            LKMotorSetRef(driven_r,r_side.T_wheel*124.12);
+            LKMotorSetRef(driven_l,l_side.T_wheel*195);
+            LKMotorSetRef(driven_r,r_side.T_wheel*195);
 
-            DMMotorSetFFTorque(joint_lb, l_side.T_front )  ;
-            DMMotorSetFFTorque(joint_lf, l_side.T_back ) ;
-            DMMotorSetFFTorque(joint_rf, r_side.T_front )  ; 
-            DMMotorSetFFTorque(joint_rb, r_side.T_back)  ;
+            dmmotor_set_torque(joint_lb, l_side.T_front )  ;
+            dmmotor_set_torque(joint_lf, l_side.T_back ) ;
+            dmmotor_set_torque(joint_rf, r_side.T_front )  ; 
+            dmmotor_set_torque(joint_rb, r_side.T_back)  ;
         // }
         // else
         // {
             // LKMotorSetRef(driven_r, 0)   ;
             // LKMotorSetRef(driven_l, 0)   ;
-            // DMMotorSetFFTorque(joint_lb, 0) ;
-            // DMMotorSetFFTorque(joint_lf, 0) ;
-            // DMMotorSetFFTorque(joint_rf, 0 ) ; 
-            // DMMotorSetFFTorque(joint_rb, 0)  ;
+            // dmmotor_set_torque(joint_lb, 0) ;
+            // dmmotor_set_torque(joint_lf, 0) ;
+            // dmmotor_set_torque(joint_rf, 0 ) ; 
+            // dmmotor_set_torque(joint_rb, 0)  ;
         // }
         osDelay(1);
     }
