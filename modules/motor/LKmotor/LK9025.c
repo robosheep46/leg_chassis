@@ -96,7 +96,7 @@ LKMotorInstance *LKMotorInit(Motor_Init_Config_s *config)
     config->can_init_config.tx_id = config->can_init_config.tx_id+0x140;
     motor->motor_can_ins = can_register(&config->can_init_config);
     MotorSenderGrouping(motor,config);
-    LKMotorEnable(motor);
+    lkmotor_enable(motor);
     dwt_get_delta_time(&motor->measure.feed_dwt_cnt);
     lkmotor_instance[idx++] = motor;
 
@@ -162,17 +162,17 @@ void LKMotorControl()
     }
 }
 
-void LKMotorStop(LKMotorInstance *motor)
+void lkmotor_stop(LKMotorInstance *motor)
 {
     motor->stop_flag = MOTOR_STOP;
 }
 
-void LKMotorEnable(LKMotorInstance *motor)
+void lkmotor_enable(LKMotorInstance *motor)
 {
     motor->stop_flag = MOTOR_ENALBED;
 }
 
-void LKMotorSetRef(LKMotorInstance *motor, float ref)
+void lkmotor_set_torque(LKMotorInstance *motor, float ref)
 {
     if(ref <= I_MIN)
     {

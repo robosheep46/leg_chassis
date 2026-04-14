@@ -68,7 +68,7 @@ LKMotorInstance *LKMotorInit(Motor_Init_Config_s *config);
  * @param motor 要设置的电机
  * @param ref 设定值
  */
-void LKMotorSetRef(LKMotorInstance *motor, float ref);
+void lkmotor_set_torque(LKMotorInstance *motor, float ref);
 
 /**
  * @brief 为所有LK电机计算pid/反转/模式控制,并通过bspcan发送电流值(发送CAN报文)
@@ -81,14 +81,14 @@ void LKMotorControl();
  *
  * @param motor
  */
-void LKMotorStop(LKMotorInstance *motor);
+void lkmotor_stop(LKMotorInstance *motor);
 
 /**
  * @brief 启动LK电机
  *
  * @param motor
  */
-void LKMotorEnable(LKMotorInstance *motor);
+void lkmotor_enable(LKMotorInstance *motor);
 
 uint8_t LKMotorIsOnline(LKMotorInstance *motor);
 

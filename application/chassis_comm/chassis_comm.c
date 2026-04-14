@@ -30,6 +30,8 @@ static CANCommInstance *chassis_can_comm;
 
 /**************************************ChassisUsed**************************************/
 static Chassis_Ctrl_Cmd_s chassis_cmd_send;      // 发送给底盘应用的信息,包括控制信息和UI绘制相关
+static Chassis_Upload_Data_s chassis_cmd_recv;      // 发送给底盘应用的信息,包括控制信息和UI绘制相关
+
 static Chassis_Upload_Data_s chassis_fetch_data; // 从底盘应用接收的反馈信息信息,底盘功率枪口热量与底盘运动状态等
 static Gimbal_Ctrl_Cmd_s gimbal_cmd_send;
 static Gimbal_Upload_Data_s gimbal_fetch_data;
@@ -42,6 +44,7 @@ static TaskHandle_t robot_cmd_task_handle = NULL;
 static BuzzerInstance *buzzer;
 
 static QueueHandle_t cmd_control_chassis_queue;
+static QueueHandle_t cmd_chassis_fetch_queue;
 
 const osThreadAttr_t chassis_comm_task_attributes = {
     .name = "chassis_comm_task",
@@ -65,10 +68,11 @@ void ChassisCMDInit(RobotCtrlQueues_t *control_queue)
     buzzer = BuzzerRegister(buzzer_queue);
     CreateDaemon(buzzer);
 
-    chassis_cmd_send.l_target_len = 0.21;
-    chassis_cmd_send.r_target_len = 0.21;
+    chassis_cmd_send.l_target_len = 0.22;
+    chassis_cmd_send.r_target_len = 0.22;
     #if defined (CHASSIS_BOARD) || defined (CHASSIS_BOARD_CONTROL_CHASSIS)
     cmd_control_chassis_queue = control_queue->control_chassis_queue;
+    cmd_chassis_fetch_queue   =   control_queue->chassis_fetch_queue;
     #endif
 
     robot_cmd_task_handle = osThreadNew(ChassisCMDTask,NULL,&chassis_comm_task_attributes);
@@ -89,13 +93,13 @@ void ChassisCMDInit(RobotCtrlQueues_t *control_queue)
 #ifdef CHASSIS_BOARD_CONTROL_CHASSIS
 static float limit_leg_length(float leg_length)
 {
-    if(leg_length>= 0.37)
+    if(leg_length>= 0.39)
     {
-        leg_length =0.37;
+        leg_length =0.39;
     }
-    else if(leg_length<= 0.23)
+    else if(leg_length<= 0.25)
     {
-        leg_length =0.23;
+        leg_length =0.25;
     }
     else
     {
@@ -109,6 +113,11 @@ static void BasicSet()
 
 
     //
+    if (switch_is_down((rc_data[TEMP].rc.switch_right)))
+    {
+        chassis_cmd_send.l_target_len = 0.39;
+        chassis_cmd_send.r_target_len = 0.39;
+    }
 
 
     if (switch_is_mid(rc_data[TEMP].rc.switch_right))
@@ -116,18 +125,36 @@ static void BasicSet()
         if (switch_is_down((rc_data[TEMP].rc.switch_left)))
         {
             chassis_cmd_send.chassis_mode  = CHASSIS_ZERO_FORCE;
-            // chassis_cmd_send.l_target_len -= 0.00009f;
-            // chassis_cmd_send.r_target_len -= 0.00009f;
+            // if(chassis_cmd_recv.stand_up_stage == STAGE_CHANGE_LENGTH)
+            // {
+            //     chassis_cmd_send.l_target_len -= 0.00015f;
+            //     chassis_cmd_send.r_target_len -= 0.00015f;
+            //     chassis_cmd_send.l_target_len = limit_leg_length(chassis_cmd_send.l_target_len);
+            //     chassis_cmd_send.r_target_len = limit_leg_length(chassis_cmd_send.r_target_len);
+            // }
+            // else if (chassis_cmd_recv.stand_up_stage == STAGE_NORMAL_BALANCE)
+            // {
+            //     chassis_cmd_send.l_target_len = 0.25;
+            //     chassis_cmd_send.r_target_len = 0.25;
+            //     // chassis_cmd_send.l_target_len = 0.22f;
+            //     // chassis_cmd_send.r_target_len = 0.22f;
+            // }
+            // else if (chassis_cmd_recv.stand_up_stage == STAGE_TORQUE_ZERO)
 
-            // chassis_cmd_send.l_target_len = limit_leg_length(chassis_cmd_send.l_target_len);
-            // chassis_cmd_send.r_target_len = limit_leg_length(chassis_cmd_send.r_target_len);
+            // {
+            //     chassis_cmd_send.l_target_len = 0.39;
+            //     chassis_cmd_send.r_target_len = 0.39;
+            // }
+
+
         }
-        chassis_cmd_send.vx = 0.002f * (float)rc_data[TEMP].rc.rocker_left_y;
-        chassis_cmd_send.l_target_len -= 0.0000002f*(float)rc_data[TEMP].rc.rocker_right_y;
-        chassis_cmd_send.r_target_len -= 0.0000002f*(float)rc_data[TEMP].rc.rocker_right_y;
-        chassis_cmd_send.offset_angle -= 0.000005f * (float)rc_data[TEMP].rc.rocker_right_x;
+
         if (switch_is_mid((rc_data[TEMP].rc.switch_left)))
         {
+            chassis_cmd_send.vx = 0.002f * (float)rc_data[TEMP].rc.rocker_left_y;
+            chassis_cmd_send.offset_angle -= 0.000005f * (float)rc_data[TEMP].rc.rocker_right_x;
+            chassis_cmd_send.l_target_len -= 0.0000002f*(float)rc_data[TEMP].rc.rocker_right_y;
+            chassis_cmd_send.r_target_len -= 0.0000002f*(float)rc_data[TEMP].rc.rocker_right_y;
             chassis_cmd_send.chassis_mode  = CHASSIS_FOLLOW_GIMBAL_YAW;
         }
         if (switch_is_up((rc_data[TEMP].rc.switch_left)))
@@ -155,6 +182,8 @@ void ChassisCMDTask(void *argument)
 {
     for(;;)
     {
+        xQueueReceive(cmd_chassis_fetch_queue, &chassis_cmd_recv, 0);
+
         #ifdef CHASSIS_BOARD
         chassis_cmd_send = *(Chassis_Ctrl_Cmd_s *)CANCommGet(chassis_can_comm);
         #endif
@@ -165,6 +194,6 @@ void ChassisCMDTask(void *argument)
         #endif // CHASSIS_BOARD_CONTROL_CHASSIS
         xQueueSend(cmd_control_chassis_queue, &chassis_cmd_send, NULL);
 
-        osDelay(3);
+        osDelay(1);
     }
 }

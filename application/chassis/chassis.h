@@ -8,10 +8,10 @@
 #include "robot_def.h"
 // 电机枚举
 #define JOINT_CNT 4u
-#define LF 0u
-#define LB 1u
-#define RF 2u
-#define RB 3u
+#define LF 3u
+#define LB 2u
+#define RF 0u
+#define RB 1u
 
 #define DRIVEN_CNT 2u
 #define LD 0u
@@ -101,12 +101,7 @@ typedef struct {
     uint8_t first_flag;
 } LegParam;
 
-// 腿部状态向量（LQR控制用）
-typedef struct {
-    float theta, theta_dot;     // 腿部角度和角速度
-    float x, x_dot;             // 机体位移和速度  
-    float phi, phi_dot;         // 机体俯仰角和角速度
-} LegState_t;
+
 
 
 // 主底盘参数结构体
@@ -123,10 +118,11 @@ typedef struct
     float vel_m;                // 底盘速度测量值
     float vel_cov;              // 速度方差
     
-    LegState_t leg_state[2];
 
 
-    KalmanFilter_t v_kf;  // 观测车体速度
+    KalmanFilter_t v_kf;  // 观测车体速度4
+    stand_up_stage_e stand_up_stage;
+    uint32_t  stand_up_start_time;
 } ChassisParam;
 
 

@@ -201,6 +201,16 @@ typedef struct
 
 } Shoot_Ctrl_Cmd_s;
 /* ----------------gimbal/shoot/chassis发布的反馈数据----------------*/
+typedef enum
+{
+    STAGE_TORQUE_ZERO = 0,      // 力矩清零阶段
+    STAGE_POSITION_CTRL = 1,    // 位置控制阶段
+    STAGE_CHANGE_LENGTH = 2,    // 停止保持阶段
+    STAGE_NORMAL_BALANCE = 3    // 正常平衡阶段
+} stand_up_stage_e;
+
+
+
 
 /* ----------------麦轮解算/电机中间量等数据----------------*/
 typedef struct
@@ -214,8 +224,7 @@ typedef struct
 
 typedef struct
 {
-    float yaw_motor_single_round_angle;
-    uint8_t over_heat_flag;
+    stand_up_stage_e stand_up_stage;
 } Chassis_Upload_Data_s;
 
 typedef struct
